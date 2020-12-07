@@ -1,5 +1,6 @@
 package altaite.binance.data;
 
+import com.binance.api.client.domain.event.CandlestickEvent;
 import com.binance.api.client.domain.market.Candlestick;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -43,6 +44,20 @@ public class Candle {
 	}
 
 	public Candle(Candlestick b) {
+		openTime = encode(b.getOpenTime());
+		open = sd(b.getOpen());
+		high = sd(b.getHigh());
+		low = sd(b.getLow());
+		close = sd(b.getClose());
+		volume = sd(b.getVolume());
+		closeTime = encode(b.getCloseTime());
+		quoteAssetVolume = sd(b.getQuoteAssetVolume());
+		numberOfTrades = encode(b.getNumberOfTrades());
+		takerBuyBaseAssetVolume = sd(b.getTakerBuyBaseAssetVolume());
+		takerBuyQuoteAssetVolume = sd(b.getTakerBuyQuoteAssetVolume());
+	}
+
+	public Candle(CandlestickEvent b) {
 		openTime = encode(b.getOpenTime());
 		open = sd(b.getOpen());
 		high = sd(b.getHigh());

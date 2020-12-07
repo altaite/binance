@@ -59,7 +59,7 @@ public class RandomForestClassifierSmile implements Model {
 		}
 	}
 
-	private void deserialize() {
+	public void deserialize() {
 		try {
 			FileInputStream fileIn = new FileInputStream(getModelFile());
 			ObjectInputStream in = new ObjectInputStream(fileIn);

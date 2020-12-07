@@ -8,6 +8,11 @@ public class Instance {
 
 	private List<Double> list = new ArrayList<>();
 	private List<Boolean> isNominal = new ArrayList<>();
+	private boolean hasTarget;
+
+	public Instance(boolean hasTarget) {
+		this.hasTarget = hasTarget;
+	}
 
 	public void addNominal(int feature) {
 		list.add((double) feature);
@@ -44,11 +49,19 @@ public class Instance {
 	}
 
 	public double getTarget() {
+		if (!hasTarget) {
+			throw new RuntimeException();
+		}
 		return list.get(list.size() - 1);
 	}
-	
+
 	public double[] getIndependent() {
-		double[] a = new double[list.size() - 1];
+		double[] a;
+		if (hasTarget) {
+			a = new double[list.size() - 1];
+		} else {
+			a = new double[list.size()];
+		}
 		for (int i = 0; i < a.length; i++) {
 			a[i] = list.get(i);
 		}

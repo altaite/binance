@@ -3,7 +3,7 @@ package altaite.binance.scanner;
 import altaite.analysis.Sample2;
 import altaite.analysis.RegressionResults;
 import altaite.binance.data.CandleStorage;
-import altaite.binance.data.CandleUpdater;
+import altaite.binance.data.Candles;
 import altaite.binance.data.SymbolPair;
 import altaite.binance.data.Windows;
 import altaite.binance.data.WindowsFactory;
@@ -18,16 +18,11 @@ import altaite.learn.Dataset;
 import altaite.learn.Instance;
 import altaite.learn.model.Model;
 import altaite.learn.model.RandomForestRegressionSmile;
-import com.binance.api.client.BinanceApiClientFactory;
-import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.event.AllMarketTickersEvent;
-import com.binance.api.client.domain.general.ExchangeInfo;
-import com.binance.api.client.domain.general.SymbolInfo;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,13 +33,10 @@ import java.util.StringTokenizer;
 
 public class Backtest {
 
-	private GlobalDirs globalDirs = new GlobalDirs("d:/t/data/binance");
-	private BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance();
-	private BinanceApiRestClient rest = factory.newRestClient();
-	private Path home = Paths.get("d:/t/data/market/binance");
+	private GlobalDirs globalDirs = new GlobalDirs(GlobalDirs.defaultDir);
 	private ExperimentParameters pars = new ExperimentParameters();
-	private boolean update = true;
-	private int readMax = Integer.MAX_VALUE;
+	private boolean update = false;
+	private int readMax = 100000;//Integer.MAX_VALUE;
 	// immediate fast growth
 	// breaks long term high
 	// !!! maybe just accelerating significant growth
@@ -57,7 +49,7 @@ public class Backtest {
 	//"ethbtc", response -> System.out.println(response));
 	private Map<String, Long> numbers = new HashMap<>();
 
-	private CandleStorage storage = new CandleStorage(home.resolve("candle_storage_00"), rest);
+	private CandleStorage storage = new CandleStorage(globalDirs.getCandleStorage());
 	private boolean compute = true;
 
 	private void evaluate() {
@@ -68,13 +60,12 @@ public class Backtest {
 				continue;
 			}
 			System.out.println("PAIR " + code);
-			ExperimentDirs dirs = new ExperimentDirs(globalDirs.getHome().resolve("data_" + pairs.get(i)));
+			ExperimentDirs dirs = new ExperimentDirs(globalDirs.getExperimentDir(pairs.get(i)));
 			Sample2 results;
 			if (compute) {
-				CandleUpdater candles;
+				Candles candles;
 				if (update) {
-					candles = storage.updateCandles(pairs.get(i));
-					candles.check();
+					candles = storage.update(pairs.get(i), pars.getMonthsBack());
 				} else {
 					candles = storage.get(pairs.get(i), readMax);
 				}
@@ -82,13 +73,9 @@ public class Backtest {
 				WindowsFactory wf = new WindowsFactory(candles, pars);
 				Windows windows = wf.createWindows();
 
-				if (pars.invertCandles) {
-					windows.invertValues();
-				}
-
 				System.out.println("windows " + windows.size());
 				Windows[] ws = windows.splitByTime(0.66);
-				Featurizer featurizer = new SimpleFeaturizer();
+				Featurizer featurizer = new SimpleFeaturizer(pars);
 				createDataset(ws[0], featurizer, dirs.getTrain());
 				featurizer.printStats();
 				createDataset(ws[1], featurizer, dirs.getTest());
@@ -96,7 +83,7 @@ public class Backtest {
 				Model model = createModel(dirs);
 				results = testModel(model, ws[1], featurizer, dirs); // first simple eval using only arff? for histograms
 			} else {
-				results = new Sample2(dirs.getResultsCsv());
+				results = new Sample2(dirs.getResultsRawCsv());
 			}
 			RegressionResults rr = new RegressionResults(results, globalDirs, dirs);
 			rr.save();
@@ -135,7 +122,7 @@ public class Backtest {
 			double predicted = model.predict(i);
 			s.add(real, predicted);
 		}
-		s.toCsv(dirs.getResultsCsv());
+		s.toCsv(dirs.getResultsRawCsv());
 		return s;
 		//Trader trader = new Trader();
 		//for (Window w : windows) {
@@ -195,7 +182,7 @@ public class Backtest {
 	private List<SymbolPair> getPairs() {
 		List<SymbolPair> pairs = new ArrayList<>();
 		Set<SymbolPair> set = new HashSet<>();
-		try (BufferedReader br = new BufferedReader(new FileReader(home.resolve("most_traded.txt").toFile()))) {
+		try (BufferedReader br = new BufferedReader(new FileReader(globalDirs.getMostTradedPairs()))) {
 			String line;
 			while ((line = br.readLine()) != null) {
 				StringTokenizer st = new StringTokenizer(line, "/");
@@ -214,16 +201,6 @@ public class Backtest {
 			throw new RuntimeException(ex);
 		}
 		return pairs;
-	}
-
-	private void getSymbols() {
-		ExchangeInfo info = rest.getExchangeInfo();
-
-		System.out.println(info.getSymbols().size());
-
-		for (SymbolInfo si : info.getSymbols()) {
-			System.out.println(si.getSymbol());
-		}
 	}
 
 	private void process(List<AllMarketTickersEvent> events) {

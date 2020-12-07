@@ -1,11 +1,12 @@
 package altaite.binance.features;
 
 import altaite.analysis.Doubles;
-import altaite.binance.analysis.Candles;
+import altaite.binance.analysis.CandleArray;
 import altaite.binance.data.Candle;
 import altaite.binance.data.window.Window;
 import altaite.learn.Instance;
 import altaite.analysis.Sample;
+import altaite.binance.data.window.ExperimentParameters;
 import java.util.function.Function;
 import org.jtransforms.fft.DoubleFFT_1D;
 
@@ -36,17 +37,19 @@ nn for price, connect to train and sell, after some iterations unlock upper nn n
  */
 public class SimpleFeaturizer implements Featurizer {
 
+	private ExperimentParameters pars;
 	private boolean buying = true;
-	// TODO params from old project, reflection, initialization from file 
-	public SimpleFeaturizer() {
+
+	public SimpleFeaturizer(ExperimentParameters pars) {
+		this.pars = pars;
 	}
 
 	@Override
 	public Instance createInstance(Window window) {
 		Candle[] candles = window.getCandles();
-		double p = 0.6;
-		int al = (int) Math.round(candles.length * p);
+		int al = pars.getIndependentWindowLength();
 		int bl = candles.length - al;
+		assert candles.length == al + bl : candles.length + " " + al + " " + bl;
 		Candle[] a = new Candle[al];
 		Candle[] b = new Candle[bl];
 		System.arraycopy(candles, 0, a, 0, al);
@@ -54,9 +57,11 @@ public class SimpleFeaturizer implements Featurizer {
 
 		double lastPrice = a[a.length - 1].getOpen();
 
-		Instance instance = new Instance();
+		Instance instance = new Instance(b.length > 0);
 		computeFeatures(a, lastPrice, instance);
-		computeTarget(b, lastPrice, buying, instance);
+		if (b.length > 0) {
+			computeTarget(b, lastPrice, buying, instance);
+		}
 		return instance;
 	}
 
@@ -79,7 +84,7 @@ public class SimpleFeaturizer implements Featurizer {
 				//continue;
 			}
 			k++;
-
+// TODO moving average
 			/*double hiLo = r.r((c.getHigh() + c.getLow()) / 2);
 			double open = r.r(c.getOpen());
 			double var = (c.getHigh() - c.getLow()) / lastPrice;
@@ -137,7 +142,6 @@ public class SimpleFeaturizer implements Featurizer {
 
 	private void computeTarget(Candle[] candles, double lastPrice, boolean buying, Instance instance) {
 		Relative r = new Relative(lastPrice);
-		Candles ca = new Candles(candles);
 		double sell;
 		// sell = new Sample(ca.flatten(c -> c.getHigh())).max();
 		// sell = new Sample(ca.flatten(c -> c.getHigh())).max();
@@ -157,7 +161,9 @@ public class SimpleFeaturizer implements Featurizer {
 		sell = getSellPrice(candles, r);
 
 		double relativeGain = r.r(sell);
-		if (!buying) relativeGain *= -1;
+		if (!buying) {
+			relativeGain *= -1;
+		}
 		instance.addNumeric(relativeGain);
 	}
 

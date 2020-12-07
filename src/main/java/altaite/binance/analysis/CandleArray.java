@@ -3,11 +3,11 @@ package altaite.binance.analysis;
 import altaite.binance.data.Candle;
 import java.util.function.Function;
 
-public class Candles {
+public class CandleArray {
 
 	private Candle[] candles;
 
-	public Candles(Candle[] candles) {
+	public CandleArray(Candle[] candles) {
 		this.candles = candles;
 	}
 

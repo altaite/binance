@@ -1,23 +1,23 @@
 package altaite.binance.data;
 
-import altaite.binance.analysis.Candles;
+import altaite.binance.analysis.CandleArray;
 import altaite.binance.data.window.Window;
 import altaite.binance.data.window.ExperimentParameters;
 
 public class WindowsFactory {
 
-	private CandleUpdater candles;
+	private Candles candles;
 	private ExperimentParameters params;
 
-	public WindowsFactory(CandleUpdater candles, ExperimentParameters params) {
+	public WindowsFactory(Candles candles, ExperimentParameters params) {
 		this.candles = candles;
 		this.params = params;
 	}
 
 	public Windows createWindows() {
 		Windows windows = new Windows();
-		Candles a = candles.getSortedArray();
-		for (int i = 0; i < a.size() - params.minutes; i += params.getJump()) {
+		CandleArray a = candles.getCandleArray();
+		for (int i = 0; i < a.size() - params.getWindowLength(); i += params.getJump()) {
 			Window w = createWindow(a, i);
 			if (w != null) {
 				windows.add(w);
@@ -26,8 +26,8 @@ public class WindowsFactory {
 		return windows;
 	}
 
-	public Window createWindow(Candles all, int index) {
-		Candle[] a = new Candle[params.minutes];
+	public Window createWindow(CandleArray all, int index) {
+		Candle[] a = new Candle[params.getWindowLength()];
 		System.arraycopy(all.getArray(), index, a, 0, a.length);
 		int totalHoles = 0;
 		boolean valid = true;

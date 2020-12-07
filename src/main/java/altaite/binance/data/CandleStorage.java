@@ -1,5 +1,6 @@
 package altaite.binance.data;
 
+import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiRestClient;
 import java.io.File;
 import java.nio.file.Path;
@@ -13,22 +14,22 @@ import java.util.StringTokenizer;
 public class CandleStorage {
 
 	private Path dir;
-	private BinanceApiRestClient rest;
-	private Map<SymbolPair, CandleUpdater> map = new HashMap<>();
+	private Map<SymbolPair, Candles> map = new HashMap<>();
 	private List<SymbolPair> pairs;
+	private BinanceApiRestClient rest = BinanceApiClientFactory.newInstance().newRestClient();
 
-	public CandleStorage(Path dir, BinanceApiRestClient rest) {
+	public CandleStorage(Path dir) {
 		this.dir = dir;
-		this.rest = rest;
 	}
 
-	public CandleUpdater get(SymbolPair pair) {
+	public Candles get(SymbolPair pair) {
 		return get(pair, Integer.MAX_VALUE);
 	}
 
-	public CandleUpdater get(SymbolPair pair, int readMax) {
+	public Candles get(SymbolPair pair, int readMax) {
 		if (!map.containsKey(pair)) {
-			CandleUpdater candles = new CandleUpdater(pair, getFile(pair), readMax);
+			File file = dir.resolve(pair.getA() + "-" + pair.getB()).toFile();
+			Candles candles = new Candles(pair, file, readMax);
 			map.put(pair, candles);
 			return candles;
 		} else {
@@ -57,17 +58,18 @@ public class CandleStorage {
 		return pairs;
 	}
 
-	public CandleUpdater updateCandles(SymbolPair pair) {
-		CandleUpdater candles = get(pair);
-		candles.update(rest);
-		System.out.println("saving...");
-		candles.save(getFile(pair));
-		System.out.println("...saved");
+	public Candles update(SymbolPair pair, double monthsBack) {
+		Candles candles = get(pair);
+		candles.update(rest, monthsBack);
+
 		return candles;
 	}
 
-	private File getFile(SymbolPair pair) {
-		return dir.resolve(pair.getA() + "-" + pair.getB()).toFile();
+	public void save(SymbolPair pair) {
+		Candles candles = get(pair);
+		System.out.println("saving...");
+		candles.save();
+		System.out.println("...saved");
 	}
 
 }

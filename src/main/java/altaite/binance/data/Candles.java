@@ -1,6 +1,7 @@
 package altaite.binance.data;
 
-import altaite.binance.analysis.Candles;
+import altaite.binance.analysis.CandleArray;
+import altaite.format.Format;
 import altaite.time.Time;
 import com.binance.api.client.BinanceApiRestClient;
 import com.binance.api.client.domain.market.Candlestick;
@@ -15,18 +16,24 @@ import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-public class CandleUpdater {
+public class Candles {
 
 	private SymbolPair pair;
 	private SortedMap<Long, Candle> map = new TreeMap<>();
-	private final double monthsBack = 500;
+	private long lastTimeInFile;
+	private File file;
 
-	public CandleUpdater(SymbolPair pair, File file, int readMax) {
+	public Candles(SymbolPair pair, File file, int readMax) {
 		this.pair = pair;
-		load(file, readMax);
+		this.file = file;
+		load(readMax);
 	}
 
-	public void add(Candle c) {
+	public Candles(SymbolPair pair, File file) {
+		this(pair, file, Integer.MAX_VALUE);
+	}
+
+	public void put(Candle c) {
 		long t = c.getOpenTime();
 		map.put(t, c);
 	}
@@ -49,51 +56,82 @@ public class CandleUpdater {
 		return map.lastKey();
 	}
 
-	public Candles getSortedArray() {
+	public CandleArray getCandleArray() {
 		Candle[] a = new Candle[map.size()];
 		int i = 0;
 		for (Candle c : map.values()) {
 			a[i++] = c;
 		}
-		return new Candles(a);
+		return new CandleArray(a);
 	}
 
-	public void save(File file) {
-		try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file))) {
-			dos.writeInt(map.size());
+	public Candle[] getEnd(int minutes) {
+		long last = getLastTime();
+		Candle[] a = new Candle[minutes];
+		int i = 0;
+		for (long l = last - minutes * 60000; l < last; l += 60000) {
+			a[i++] = map.get(l);
+		}
+		return a;
+	}
+
+	public long getLastTime() {
+		return map.lastKey();
+	}
+
+	void save() {
+		int total = 0;
+		try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, true))) {
+			//dos.writeInt(map.size());
 			for (Candle c : map.values()) {
-				c.write(dos);
+				if (c.getOpenTime() > lastTimeInFile) {
+					c.write(dos);
+					System.out.println(Format.date(c.getOpenTime()) + " saved.");
+					total++;
+				}
 			}
 		} catch (IOException ex) {
 			throw new RuntimeException(ex);
 		}
+		System.out.println("Saved " + total + " candles to " + file);
 	}
 
-	private void load(File file, int readMax) {
+	private void load(int readMax) {
+		int candlesRead = 0;
+		System.out.println("Loading from " + file);
 		if (!file.exists()) {
+			System.out.println("File does not exist.");
 			return;
 		}
 		System.out.println("loading " + file.getAbsolutePath() + " ...");
 		try (DataInputStream dis = new DataInputStream(new FileInputStream(file))) {
-			int n = dis.readInt();
-			if (n > readMax) n = readMax;
-			for (int i = 0; i < n; i++) {
+			/*int n = dis.readInt();
+			if (n > readMax) {
+				n = readMax;
+			}*/
+			while (dis.available() > 0) {
+				//for (int i = 0; i < n; i++) {
 				Candle c = new Candle(dis);
+				if (c.getOpenTime() > lastTimeInFile) {
+					lastTimeInFile = c.getOpenTime();
+				}
 				map.put(c.getOpenTime(), c);
 			}
 		} catch (IOException ex) {
 			throw new RuntimeException(ex);
 		}
+		check();
 		System.out.println("...loaded " + map.size());
+		System.out.println("Last time in file is " + Format.date(lastTimeInFile));
 	}
 
-	public void check() {
+	private void check() {
 		Candle old = null;
 		for (Candle c : map.values()) {
 			if (old != null) {
 				long gap = c.getOpenTime() - old.getOpenTime();
 				if (gap > 60000) {
-					System.out.println(hours(gap) + " " + Time.format(c.getOpenTime()));
+					System.out.println("GAP " + hours(gap) + " " + Time.format(c.getOpenTime()));
 				}
 			}
 			old = c;
@@ -105,7 +143,7 @@ public class CandleUpdater {
 	}
 
 	// suspicious, why always 1 updated
-	public void update(BinanceApiRestClient rest) {
+	public void update(BinanceApiRestClient rest, double monthsBack) {
 		Long last = getMaxTime();
 		long span = Time.monthsToMilliseconds(monthsBack);
 		if (last == null) {
@@ -122,13 +160,14 @@ public class CandleUpdater {
 			progressing = false;
 			for (Candlestick cs : list) {
 				if (cs.getOpenTime() > last) {
-					add(new Candle(cs));
+					put(new Candle(cs));
 					progressing = true;
 				}
 			}
-			System.out.println("updated " + list.size() + " " + Time.format(startTime));
+			//System.out.println("updated " + list.size() + " " + Time.format(startTime));
 			startTime = getMaxTime() + 1; // roughly
 		}
+		check();
 	}
 
 }

@@ -112,19 +112,4 @@ public class Dataset {
 		return types;
 	}
 
-	public static void main(String[] args) {
-		Dataset dataset = new Dataset();
-		Instance i1 = new Instance();
-		i1.addNominal(1);
-		i1.addNominal(2);
-		i1.addNumeric(3);
-		dataset.add(i1);
-		Instance i2 = new Instance();
-		i2.addNominal(10);
-		i2.addNominal(20);
-		i2.addNumeric(30);
-		dataset.add(i2);
-		dataset.toArff(new File("c:/t/r/data.arff"));
-
-	}
 }

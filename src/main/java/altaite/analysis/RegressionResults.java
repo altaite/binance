@@ -65,6 +65,9 @@ public class RegressionResults {
 
 		Sample2 head = new Sample2(recallToAverage, p -> p.x <= 0.9);
 
+		// TODO plot 10 % moving average
+		// plot all in 90, but chart cutof at 90 value
+		
 		plot(head, dir.resolve("recall_to_average_head_90").toString());
 		String area = "Area under curve 90 %: " + head.areaUnderCurve();
 		String average90 = "90 % best average: " + head.get(head.size() - 1).y;

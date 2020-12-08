@@ -2,26 +2,25 @@ package altaite.binance.data.window;
 
 public class ExperimentParameters {
 
-	private int minutes = 500;
-	private double independent = 0.6;
+	private int jump = 10;
+	private int independent = 50;
+	private int target = 10;
 	private boolean invertCandles = false;
 
 	public int getJump() {
-		//return 10;
-		return 500;
-		//return (int) Math.round(minutes * target);
+		return jump;
 	}
 
 	public int getWindowLength() {
-		return minutes;
+		return independent + target;
 	}
 
 	public int getIndependentWindowLength() {
-		return (int) Math.round(minutes * independent);
+		return target;
 	}
 
 	public int getTargetWindowLength() {
-		return minutes - getIndependentWindowLength();
+		return target;
 	}
 
 	public double getMonthsBack() {

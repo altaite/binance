@@ -2,9 +2,9 @@ package altaite.binance.data.window;
 
 public class ExperimentParameters {
 
-	private int jump = 10;
-	private int independent = 50;
-	private int target = 10;
+	private int jump = 1;
+	private int independent = 100;
+	private int target = 60;
 	private boolean invertCandles = false;
 
 	public int getJump() {

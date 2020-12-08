@@ -48,9 +48,8 @@ public class Scanner {
 
 	private void updateCandles() {
 		double monthsBack = ((double) pars.getIndependentWindowLength()) / 60 / 24 / 30;
-		System.out.println("Months back update " + monthsBack);
+		System.out.println("Updating ... " + monthsBack);
 		chart = storage.update(pair, monthsBack);
-		storage.save(pair);
 	}
 
 	private synchronized void predict() {
@@ -70,5 +69,5 @@ public class Scanner {
 			}
 		}
 	}
-	
+
 }

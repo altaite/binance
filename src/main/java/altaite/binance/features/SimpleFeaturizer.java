@@ -172,7 +172,7 @@ public class SimpleFeaturizer implements Featurizer {
 	Doubles averageValue = new Doubles();
 
 	private double getSellPrice(Candle[] candles, Relative r) {
-		double limit = 0.0015 * 4;
+		double limit = 0.0015 * 40;
 		for (int i = 0; i < candles.length; i++) {
 			Candle c = candles[i];
 			double gain = r.r(c.getClose());

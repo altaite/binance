@@ -1,23 +1,10 @@
 package altaite.binance.scanner;
 
-import altaite.binance.data.Candle;
-import altaite.binance.data.CandleStorage;
-import altaite.binance.data.Candles;
 import altaite.binance.data.SymbolPair;
-import altaite.binance.data.window.ExperimentParameters;
-import altaite.binance.data.window.Window;
-import altaite.binance.features.Featurizer;
-import altaite.binance.features.SimpleFeaturizer;
-import altaite.binance.global.io.ExperimentDirs;
 import altaite.binance.global.io.GlobalDirs;
-import altaite.learn.Instance;
-import altaite.learn.model.Model;
-import altaite.learn.model.RandomForestRegressionSmile;
 import com.binance.api.client.BinanceApiClientFactory;
 import com.binance.api.client.BinanceApiWebSocketClient;
-import com.binance.api.client.domain.event.CandlestickEvent;
 import com.binance.api.client.domain.market.CandlestickInterval;
-import global.io.LineFile;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -38,6 +25,9 @@ public class Scanners {
 	}
 
 	private void createScanners() {
+		// update here to minimize missing candle while saving
+		//storage.save(pair);
+
 		BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance();
 		BinanceApiWebSocketClient client = factory.newWebSocketClient();
 		for (SymbolPair pair : pairs) {

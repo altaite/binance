@@ -2,6 +2,7 @@ package altaite.binance.scanner;
 
 import altaite.analysis.Sample2;
 import altaite.analysis.RegressionResults;
+import altaite.analysis.Sampling;
 import altaite.binance.data.CandleStorage;
 import altaite.binance.data.Candles;
 import altaite.binance.data.SymbolPair;
@@ -75,9 +76,9 @@ public class Backtest {
 			System.out.println("windows " + windows.size());
 			Windows[] ws = windows.splitByTime(0.66);
 			Featurizer featurizer = new SimpleFeaturizer(pars);
-			createDataset(ws[0], featurizer, dirs.getTrain());
+			createDataset(ws[0].size(), ws[0], featurizer, dirs.getTrain());
 			featurizer.printStats();
-			createDataset(ws[1], featurizer, dirs.getTest());
+			createDataset(Math.min(1000, ws[1].size()), ws[1], featurizer, dirs.getTest());
 			featurizer.printStats();
 			Model model = createModel(dirs);
 			results = testModel(model, ws[1], featurizer, dirs); // first simple eval using only arff? for histograms
@@ -92,16 +93,20 @@ public class Backtest {
 		}
 	}
 
-	private void createDataset(Windows windows, Featurizer featurizer, Path file) {
+	private void createDataset(int sampleSize, Windows windows, Featurizer featurizer, Path file) {
 		Dataset dataset = new Dataset();
 		int n = 0;
-		for (Window w : windows) {
-			Instance i = featurizer.createInstance(w);
-			dataset.add(i);
-			n = i.size();
+		boolean[] sample = Sampling.sample(1, windows.size(), sampleSize);
+		for (int i = 0; i < windows.size(); i++) {
+			if (sample[i]) {
+				Window w = windows.get(i);
+				Instance instance = featurizer.createInstance(w);
+				dataset.add(instance);
+				n = instance.size();
+			}
 		}
 		dataset.toArff(file.toFile());
-		System.out.println("Features: " + n + " Instances: " + windows.size());
+		System.out.println("Features: " + n + " Instances: " + windows.size() + " from total " + windows.size());
 
 	}
 

@@ -144,23 +144,28 @@ public class Candles {
 
 	// suspicious, why always 1 updated
 	public void update(BinanceApiRestClient rest, double monthsBack) {
-		Long last = getMaxTime();
+		Long lastInFile = getMaxTime();
 		long span = Time.monthsToMilliseconds(monthsBack);
-		if (last == null) {
+		if (lastInFile == null) {
 			long now = System.currentTimeMillis();
-			last = now - span;
+			lastInFile = now - span;
 		}
-		System.out.println("last " + Time.format(last));
-		long startTime = last;
+		
+		//System.out.println("last " + Time.format(lastInFile));
+		long startTime = lastInFile;
 		boolean progressing = true;
 		while (startTime <= System.currentTimeMillis() & progressing) {
-			long endTime = last + span;
+			long endTime = startTime + span;
 			List<Candlestick> list = rest.getCandlestickBars(pair.toString(), CandlestickInterval.ONE_MINUTE, 1000,
 				startTime, endTime);
+			//System.out.println("Request:");
+			//System.out.println(Time.format(startTime));
+			//System.out.println(Time.format(endTime));
 			progressing = false;
 			for (Candlestick cs : list) {
-				if (cs.getOpenTime() > last) {
+				if (cs.getOpenTime() > lastInFile) {
 					put(new Candle(cs));
+					System.out.println("! " + Time.format(cs.getOpenTime()));
 					progressing = true;
 				}
 			}

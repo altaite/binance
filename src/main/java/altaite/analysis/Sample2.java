@@ -6,19 +6,23 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.StringTokenizer;
 import java.util.function.Function;
 
-public class Sample2 {
+public class Sample2 implements Serializable{
 
 	private List<Pair> data = new ArrayList<>();
 	private String SEPARATOR = ",";
 
 	public Sample2() {
+	}
 
+	public Sample2(List<Pair> pairs) {
+		this.data = pairs;
 	}
 
 	public Sample2(File f) {
@@ -43,29 +47,20 @@ public class Sample2 {
 		}
 	}
 
-	public double areaUnderCurve() {
-		sortByX();
-		double area = 0;
-		for (int i = 0; i < data.size() - 1; i++) {
-			Pair a = data.get(i);
-			Pair b = data.get(i + 1);
-			area += (b.x - a.x) * (a.y + b.y) / 2;
-		}
-		return area;
+	public Sample2 createSortedByX() {
+		List<Pair> list = new ArrayList<>();
+		list.addAll(data);
+		Collections.sort(list, Pair.getXComparator());
+		Sample2 s = new Sample2(list);
+		return s;
 	}
 
-	public void toCsv(File f) {
-		try (BufferedWriter bw = new BufferedWriter(new FileWriter(f))) {
-			for (Pair p : data) {
-				bw.write(Double.toString(p.x));
-				bw.write(SEPARATOR);
-				bw.write(Double.toString(p.y));
-				bw.write(SEPARATOR);
-				bw.write("\n");
-			}
-		} catch (IOException ex) {
-			throw new RuntimeException(ex);
-		}
+	public Sample2 createSortedByY() {
+		List<Pair> list = new ArrayList<>();
+		list.addAll(data);
+		Collections.sort(list, Pair.getYComparator());
+		Sample2 s = new Sample2(list);
+		return s;
 	}
 
 	public final void add(double x, double y) {
@@ -82,14 +77,6 @@ public class Sample2 {
 
 	public int size() {
 		return data.size();
-	}
-
-	public void sortByX() {
-		Collections.sort(data, Pair.getXComparator());
-	}
-
-	public void sortByY() {
-		Collections.sort(data, Pair.getYComparator());
 	}
 
 	public double correlation() {
@@ -112,14 +99,18 @@ public class Sample2 {
 		return xs;
 	}
 
-	private List<Pair> percentile(double percentile) {
-		sortByX();
-		List<Pair> subset = new ArrayList<>();
-		int size = (int) Math.ceil(data.size() * percentile);
-		for (int i = 0; i < size; i++) {
-			subset.add(data.get(i));
+	public void toCsv(File f) {
+		try (BufferedWriter bw = new BufferedWriter(new FileWriter(f))) {
+			for (Pair p : data) {
+				bw.write(Double.toString(p.x));
+				bw.write(SEPARATOR);
+				bw.write(Double.toString(p.y));
+				bw.write(SEPARATOR);
+				bw.write("\n");
+			}
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
 		}
-		return subset;
 	}
 
 }

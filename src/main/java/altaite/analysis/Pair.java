@@ -1,8 +1,9 @@
 package altaite.analysis;
 
+import java.io.Serializable;
 import java.util.Comparator;
 
-public class Pair implements Comparable<Pair> {
+public class Pair implements Comparable<Pair>, Serializable {
 
 	public final double x, y;
 

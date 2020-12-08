@@ -1,4 +1,4 @@
-package altaite.binance;
+	package altaite.binance;
 
 /**
  * All market tickers channel examples.
@@ -39,6 +39,10 @@ public class Alerting {
 
 		new AlertRelative("linkusdt", c);
 		new AlertRelative("linkusdt", -c);
+		
+		
+		new AlertRelative("zecbtc", c);
+		new AlertRelative("zecbtc", -c);
 	}
 
 	public static void main(String[] args) {

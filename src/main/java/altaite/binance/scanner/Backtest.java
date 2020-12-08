@@ -36,7 +36,7 @@ public class Backtest {
 	private GlobalDirs globalDirs = new GlobalDirs(GlobalDirs.defaultDir);
 	private ExperimentParameters pars = new ExperimentParameters();
 	private boolean update = false;
-	private int readMax = 100000;//Integer.MAX_VALUE;
+	private int readMax = Integer.MAX_VALUE;
 	// immediate fast growth
 	// breaks long term high
 	// !!! maybe just accelerating significant growth
@@ -54,7 +54,7 @@ public class Backtest {
 
 	private void evaluate() {
 		List<SymbolPair> pairs = getPairs();
-		for (int i = 0; i < pairs.size(); i++) {
+		for (int i = 0; i < 1; i++) {
 			String code = pairs.get(i).toString();
 			if (!code.contains("BTC")) {
 				continue;
@@ -62,30 +62,27 @@ public class Backtest {
 			System.out.println("PAIR " + code);
 			ExperimentDirs dirs = new ExperimentDirs(globalDirs.getExperimentDir(pairs.get(i)));
 			Sample2 results;
-			if (compute) {
-				Candles candles;
-				if (update) {
-					candles = storage.update(pairs.get(i), pars.getMonthsBack());
-				} else {
-					candles = storage.get(pairs.get(i), readMax);
-				}
-
-				WindowsFactory wf = new WindowsFactory(candles, pars);
-				Windows windows = wf.createWindows();
-
-				System.out.println("windows " + windows.size());
-				Windows[] ws = windows.splitByTime(0.66);
-				Featurizer featurizer = new SimpleFeaturizer(pars);
-				createDataset(ws[0], featurizer, dirs.getTrain());
-				featurizer.printStats();
-				createDataset(ws[1], featurizer, dirs.getTest());
-				featurizer.printStats();
-				Model model = createModel(dirs);
-				results = testModel(model, ws[1], featurizer, dirs); // first simple eval using only arff? for histograms
+			Candles candles;
+			if (update) {
+				candles = storage.update(pairs.get(i), pars.getMonthsBack());
 			} else {
-				results = new Sample2(dirs.getResultsRawCsv());
+				candles = storage.get(pairs.get(i), readMax);
 			}
-			RegressionResults rr = new RegressionResults(results, globalDirs, dirs);
+
+			WindowsFactory wf = new WindowsFactory(candles, pars);
+			Windows windows = wf.createWindows();
+
+			System.out.println("windows " + windows.size());
+			Windows[] ws = windows.splitByTime(0.66);
+			Featurizer featurizer = new SimpleFeaturizer(pars);
+			createDataset(ws[0], featurizer, dirs.getTrain());
+			featurizer.printStats();
+			createDataset(ws[1], featurizer, dirs.getTest());
+			featurizer.printStats();
+			Model model = createModel(dirs);
+			results = testModel(model, ws[1], featurizer, dirs); // first simple eval using only arff? for histograms
+
+			RegressionResults rr = new RegressionResults(results, ws[1], globalDirs, dirs);
 			rr.save();
 
 			// later plan?? 

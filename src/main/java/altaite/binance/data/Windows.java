@@ -18,6 +18,10 @@ public class Windows implements Iterable<Window> {
 		}
 	}
 
+	public Window get(int i) {
+		return windows.get(i);
+	}
+
 	public void invertValues() {
 		for (Window w : windows) {
 			w.invertCandles();

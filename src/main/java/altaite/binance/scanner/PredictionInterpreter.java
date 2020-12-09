@@ -67,13 +67,16 @@ public class PredictionInterpreter implements Serializable {
 		return area;
 	}
 
+	// inefficient@@@@@@@@@@@@@@@@@@@@@@
 	public Sample2 thresholdToAverageOfHighestPredictions() {
+		System.out.println("ineficient start");
 		Sample2 thresholdToAverage = new Sample2();
 		for (int i = 0; i < byY.size(); i++) {
 			double avg = averageStartingWith(byY.getXs(), i);
 			double predicted = byY.get(i).y;
 			thresholdToAverage.add(predicted, avg);
 		}
+		System.out.println("ineficient end");
 		return thresholdToAverage;
 	}
 

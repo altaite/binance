@@ -1,5 +1,6 @@
 package altaite.binance.data;
 
+import altaite.analysis.Sampling;
 import altaite.binance.data.window.Window;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -10,6 +11,17 @@ public class Windows implements Iterable<Window> {
 	private List<Window> windows = new ArrayList<>();
 
 	public Windows() {
+	}
+
+	public Windows sample(int howMany) {
+		Windows ws = new Windows();
+		boolean[] sample = Sampling.sample(1, size(), howMany);
+		for (int i = 0; i < windows.size(); i++) {
+			if (sample[i]) {
+				ws.add(get(i));
+			}
+		}
+		return ws;
 	}
 
 	public Windows(Window[] a) {

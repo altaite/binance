@@ -18,20 +18,10 @@ public class Pair implements Comparable<Pair>, Serializable {
 	}
 
 	public static Comparator<Pair> getXComparator() {
-		return new Comparator<Pair>() {
-			@Override
-			public int compare(Pair p1, Pair p2) {
-				return Double.compare(p1.x, p2.x);
-			}
-		};
+		return (Pair p1, Pair p2) -> Double.compare(p1.x, p2.x);
 	}
 
 	public static Comparator<Pair> getYComparator() {
-		return new Comparator<Pair>() {
-			@Override
-			public int compare(Pair p1, Pair p2) {
-				return Double.compare(p1.y, p2.y);
-			}
-		};
+		return (Pair p1, Pair p2) -> Double.compare(p1.y, p2.y);
 	}
 }

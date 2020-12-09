@@ -75,15 +75,19 @@ public class Backtest {
 
 			System.out.println("windows " + windows.size());
 			Windows[] ws = windows.splitByTime(0.66);
+
+			Windows train = ws[0].sample(Math.min(1000, ws[0].size()));
+			Windows test = ws[0].sample(Math.min(50000, ws[1].size()));
+
 			Featurizer featurizer = new SimpleFeaturizer(pars);
-			createDataset(ws[0].size(), ws[0], featurizer, dirs.getTrain());
+			createDataset(train, featurizer, dirs.getTrain());
 			featurizer.printStats();
-			createDataset(Math.min(1000, ws[1].size()), ws[1], featurizer, dirs.getTest());
+			createDataset(test, featurizer, dirs.getTest());
 			featurizer.printStats();
 			Model model = createModel(dirs);
-			results = testModel(model, ws[1], featurizer, dirs); // first simple eval using only arff? for histograms
+			results = testModel(model, test, featurizer, dirs); // first simple eval using only arff? for histograms
 
-			RegressionResults rr = new RegressionResults(results, ws[1], globalDirs, dirs);
+			RegressionResults rr = new RegressionResults(results, test, globalDirs, dirs);
 			rr.save();
 
 			// later plan?? 
@@ -93,17 +97,14 @@ public class Backtest {
 		}
 	}
 
-	private void createDataset(int sampleSize, Windows windows, Featurizer featurizer, Path file) {
+	private void createDataset(Windows windows, Featurizer featurizer, Path file) {
 		Dataset dataset = new Dataset();
 		int n = 0;
-		boolean[] sample = Sampling.sample(1, windows.size(), sampleSize);
 		for (int i = 0; i < windows.size(); i++) {
-			if (sample[i]) {
-				Window w = windows.get(i);
-				Instance instance = featurizer.createInstance(w);
-				dataset.add(instance);
-				n = instance.size();
-			}
+			Window w = windows.get(i);
+			Instance instance = featurizer.createInstance(w);
+			dataset.add(instance);
+			n = instance.size();
 		}
 		dataset.toArff(file.toFile());
 		System.out.println("Features: " + n + " Instances: " + windows.size() + " from total " + windows.size());

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.StringTokenizer;
 import java.util.function.Function;
 
-public class Sample2 implements Serializable{
+public class Sample2 implements Serializable {
 
 	private List<Pair> data = new ArrayList<>();
 	private String SEPARATOR = ",";
@@ -63,8 +63,22 @@ public class Sample2 implements Serializable{
 		return s;
 	}
 
+	public Sample2 filter(Function<Pair, Boolean> f) {
+		Sample2 s = new Sample2();
+		for (Pair p : data) {
+			if (f.apply(p)) {
+				s.add(p);
+			}
+		}
+		return s;
+	}
+
 	public final void add(double x, double y) {
 		data.add(new Pair(x, y));
+	}
+
+	public final void add(Pair p) {
+		data.add(p);
 	}
 
 	public Pair get(int i) {

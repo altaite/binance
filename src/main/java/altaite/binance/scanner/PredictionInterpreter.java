@@ -28,6 +28,10 @@ public class PredictionInterpreter implements Serializable {
 		this.byY = byTime.createSortedByY();
 	}
 
+	public Sample2 getByY() {
+		return byY;
+	}
+
 	public PredictionInterpreter(File timedCsv) {
 		byTime = new Sample2();
 		try (BufferedReader br = new BufferedReader(new FileReader(timedCsv))) {
@@ -67,8 +71,7 @@ public class PredictionInterpreter implements Serializable {
 		return area;
 	}
 
-	// inefficient@@@@@@@@@@@@@@@@@@@@@@
-	public Sample2 thresholdToAverageOfHighestPredictions() {
+	public Sample2 thresholdToAverageAboveThreshold() {
 		System.out.println("ineficient start");
 		Sample2 thresholdToAverage = new Sample2();
 		for (int i = 0; i < byY.size(); i++) {

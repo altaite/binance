@@ -39,6 +39,50 @@ public class RegressionResults {
 		saveHeatmap();
 		plotRecallToAverage();
 		examples();
+		percentileToLocalAverage();
+	}
+
+	public PredictionInterpreter getInterpreter() {
+		return interpreter;
+	}
+
+	private void percentileToLocalAverage() {
+		Sample2 byY = interpreter.getByY();
+		Sample2 plot = new Sample2();
+		int n = byY.size();
+		double[] xs = byY.getXs();
+		double[] ys = byY.getYs();
+		for (int i = 0; i < byY.size(); i++) {
+			double di = i;
+			double percentile = di / n;
+			double a = percentile - 0.005;
+			double b = percentile + 0.005;
+			int ai = (int) Math.floor(a * n);
+			if (ai < 0) {
+				ai = 0;
+			}
+			int bi = (int) Math.ceil(b * n);
+			if (bi >= n) {
+				bi = n - 1;
+			}
+			int count = 0;
+			double sum = 0;
+			// TODO max 10
+			//System.out.println(ai + " -> " + bi + " " + percentile);
+			while (bi - ai > 20) {
+				ai++;
+				bi--;
+			}
+			for (int k = ai; k <= bi; k++) {
+				sum += xs[k];
+				count++;
+			}
+			double avg = sum / count;
+			plot.add(percentile, avg);
+		}
+		plot(plot, dir.resolve("pct_to_local_avg").toString(), screen.x, screen.y);
+		plot(plot.filter(p -> p.x >= 0.95), dir.resolve("pct_to_local_avg_95").toString(), screen.x, screen.y);
+		plot(plot.filter(p -> p.x <= 0.05), dir.resolve("pct_to_local_avg_05").toString(), screen.x, screen.y);
 	}
 
 	private void correlation() {
@@ -57,7 +101,7 @@ public class RegressionResults {
 	}
 
 	private void plotRecallToAverage() {
-		Sample2 thresholdToAverage = interpreter.thresholdToAverageOfHighestPredictions();
+		Sample2 thresholdToAverage = interpreter.thresholdToAverageAboveThreshold();
 		thresholdToAverage.toCsv(dir.resolve("threshold_to_average.csv").toFile());
 		plot(thresholdToAverage, dir.resolve("threshold_to_average").toString(), screen.x, screen.y);
 

@@ -85,18 +85,18 @@ public class SimpleFeaturizer implements Featurizer {
 			}
 			k++;
 // TODO moving average
-			/*double hiLo = r.r((c.getHigh() + c.getLow()) / 2);
+			double hiLo = r.r((c.getHigh() + c.getLow()) / 2);
 			double open = r.r(c.getOpen());
 			double var = (c.getHigh() - c.getLow()) / lastPrice;
 			instance.addNumeric(hiLo);
 			instance.addNumeric(open);
-			instance.addNumeric(var);*/
+			instance.addNumeric(var);
 			// need those relative:
-			/*
+			
 			instance.addNumeric(c.getNumberOfTrades());
 			instance.addNumeric(c.getVolume());
 			instance.addNumeric(c.getQuoteAssetVolume());
-			instance.addNumeric(c.getTakerBuyBaseAssetVolume());*/
+			instance.addNumeric(c.getTakerBuyBaseAssetVolume());
 		}
 
 		/*	double[] hl = extract(candles, c -> (c.getLow() + c.getHigh()) / 2);

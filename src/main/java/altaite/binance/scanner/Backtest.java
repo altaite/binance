@@ -15,6 +15,7 @@ import altaite.binance.features.SimpleFeaturizer;
 import altaite.binance.global.io.ExperimentDirs;
 import altaite.binance.global.io.GlobalDirs;
 import altaite.binance.trader.Trader;
+import altaite.format.Format;
 import altaite.learn.Dataset;
 import altaite.learn.Instance;
 import altaite.learn.model.Model;
@@ -36,6 +37,7 @@ public class Backtest {
 
 	private GlobalDirs globalDirs = new GlobalDirs(GlobalDirs.defaultDir);
 	private ExperimentParameters pars = new ExperimentParameters();
+	Featurizer featurizer = new SimpleFeaturizer(pars);
 	private boolean update = false;
 	private int readMax = Integer.MAX_VALUE;
 	// immediate fast growth
@@ -76,19 +78,20 @@ public class Backtest {
 			System.out.println("windows " + windows.size());
 			Windows[] ws = windows.splitByTime(0.66);
 
-			Windows train = ws[0].sample(Math.min(1000, ws[0].size()));
-			Windows test = ws[0].sample(Math.min(50000, ws[1].size()));
+			Windows train = ws[0].sample(Math.min(pars.trainSamples, ws[0].size()));
+			Windows test = ws[1].sample(Math.min(pars.testSamples, ws[1].size()));
 
-			Featurizer featurizer = new SimpleFeaturizer(pars);
-			createDataset(train, featurizer, dirs.getTrain());
+			createDataset(train, dirs.getTrain());
 			featurizer.printStats();
-			createDataset(test, featurizer, dirs.getTest());
+			createDataset(test, dirs.getTest());
 			featurizer.printStats();
 			Model model = createModel(dirs);
-			results = testModel(model, test, featurizer, dirs); // first simple eval using only arff? for histograms
+			results = testModel(model, test, dirs); // first simple eval using only arff? for histograms
 
 			RegressionResults rr = new RegressionResults(results, test, globalDirs, dirs);
 			rr.save();
+
+			trade(model, test, rr.getInterpreter());
 
 			// later plan?? 
 			// visualize sensible information in real time, and on plots
@@ -97,26 +100,22 @@ public class Backtest {
 		}
 	}
 
-	private void createDataset(Windows windows, Featurizer featurizer, Path file) {
-		Dataset dataset = new Dataset();
-		int n = 0;
-		for (int i = 0; i < windows.size(); i++) {
-			Window w = windows.get(i);
-			Instance instance = featurizer.createInstance(w);
-			dataset.add(instance);
-			n = instance.size();
+	private void trade(Model model, Windows windows, PredictionInterpreter interpreter) {
+		for (Window w : windows) {
+			Instance i = featurizer.createInstance(w);
+			double real = i.getTarget();
+			double predicted = model.predict(i);
+
+			double pct = interpreter.percentilePredicted(predicted);
+			if (pct > 0.995) {
+				String time = Format.date(w.getEnd());
+				System.out.println(time + " " + pct + " " + predicted + " " + real);
+			}
 		}
-		dataset.toArff(file.toFile());
-		System.out.println("Features: " + n + " Instances: " + windows.size() + " from total " + windows.size());
 
 	}
 
-	private Model createModel(ExperimentDirs dirs) {
-		Model model = new RandomForestRegressionSmile(dirs.getTrain(), dirs.getRandomForest());
-		return model;
-	}
-
-	private Sample2 testModel(Model model, Windows windows, Featurizer featurizer, ExperimentDirs dirs) {
+	private Sample2 testModel(Model model, Windows windows, ExperimentDirs dirs) {
 		System.out.println("Evaluating windows: " + windows.size());
 		Sample2 s = new Sample2();
 		for (Window w : windows) {
@@ -133,6 +132,25 @@ public class Backtest {
 		// instance stripped of target, create from window
 		//	double profit = trader.trade();
 		//}
+	}
+
+	private void createDataset(Windows windows, Path file) {
+		Dataset dataset = new Dataset();
+		int n = 0;
+		for (int i = 0; i < windows.size(); i++) {
+			Window w = windows.get(i);
+			Instance instance = featurizer.createInstance(w);
+			dataset.add(instance);
+			n = instance.size();
+		}
+		dataset.toArff(file.toFile());
+		System.out.println("Features: " + n + " Instances: " + windows.size() + " from total " + windows.size());
+
+	}
+
+	private Model createModel(ExperimentDirs dirs) {
+		Model model = new RandomForestRegressionSmile(dirs.getTrain(), dirs.getRandomForest());
+		return model;
 	}
 
 	private void evaluateTrader(Trader trader) {

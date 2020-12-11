@@ -127,4 +127,23 @@ public class Sample2 implements Serializable {
 		}
 	}
 
+	public Sample2 box(double xa, double ya, double xb, double yb) {
+		Sample2 s = new Sample2();
+		for (Pair p : data) {
+			double x = p.x;
+			double y = p.y;
+			if (x < xa) {
+				x = xa;
+			} else if (x > xb) {
+				x = xb;
+			}
+			if (y < ya) {
+				y = ya;
+			} else if (y > yb) {
+				y = yb;
+			}
+			s.add(x, y);
+		}
+		return s;
+	}
 }

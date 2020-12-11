@@ -10,8 +10,8 @@ public class ExperimentDirs {
 
 	private final Path home;
 
-	public ExperimentDirs(GlobalDirs globalDirs, SymbolPair pair) {
-		this.home = globalDirs.getExperimentDir(pair);
+	public ExperimentDirs(GlobalDirs globalDirs, SymbolPair pair, String description) {
+		this.home = globalDirs.getExperiment(pair, description);
 	}
 
 	public ExperimentDirs(Path homePath) {

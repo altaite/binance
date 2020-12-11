@@ -33,6 +33,10 @@ public class Candles {
 		this(pair, file, Integer.MAX_VALUE);
 	}
 
+	public SymbolPair getPair() {
+		return pair;
+	}
+
 	public void put(Candle c) {
 		long t = c.getOpenTime();
 		map.put(t, c);
@@ -86,7 +90,6 @@ public class Candles {
 			for (Candle c : map.values()) {
 				if (c.getOpenTime() > lastTimeInFile) {
 					c.write(dos);
-					System.out.println(Format.date(c.getOpenTime()) + " saved.");
 					total++;
 				}
 			}
@@ -100,7 +103,7 @@ public class Candles {
 		int candlesRead = 0;
 		System.out.println("Loading from " + file);
 		if (!file.exists()) {
-			System.out.println("File does not exist.");
+			System.out.println("File " + file + " does not exist.");
 			return;
 		}
 		System.out.println("loading " + file.getAbsolutePath() + " ...");
@@ -144,13 +147,14 @@ public class Candles {
 
 	// suspicious, why always 1 updated
 	public void update(BinanceApiRestClient rest, double monthsBack) {
+		System.out.println("Updating...");
 		Long lastInFile = getMaxTime();
 		long span = Time.monthsToMilliseconds(monthsBack);
 		if (lastInFile == null) {
 			long now = System.currentTimeMillis();
 			lastInFile = now - span;
 		}
-		
+
 		//System.out.println("last " + Time.format(lastInFile));
 		long startTime = lastInFile;
 		boolean progressing = true;
@@ -165,7 +169,7 @@ public class Candles {
 			for (Candlestick cs : list) {
 				if (cs.getOpenTime() > lastInFile) {
 					put(new Candle(cs));
-					System.out.println("! " + Time.format(cs.getOpenTime()));
+					//System.out.println("! " + Time.format(cs.getOpenTime()));
 					progressing = true;
 				}
 			}
@@ -173,6 +177,7 @@ public class Candles {
 			startTime = getMaxTime() + 1; // roughly
 		}
 		check();
+		System.out.println("...updated.");
 	}
 
 }

@@ -1,7 +1,6 @@
 package altaite.binance.features;
 
 import altaite.analysis.Doubles;
-import altaite.binance.analysis.CandleArray;
 import altaite.binance.data.Candle;
 import altaite.binance.data.window.Window;
 import altaite.learn.Instance;
@@ -47,30 +46,28 @@ public class SimpleFeaturizer implements Featurizer {
 	@Override
 	public Instance createInstance(Window window) {
 		Candle[] candles = window.getCandles();
-		int al = pars.getIndependentWindowLength();
+		int al = pars.getFeatureN();
 		int bl = candles.length - al;
 		assert candles.length == al + bl : candles.length + " " + al + " " + bl;
+		assert pars.getWindowN() == al + bl;
 		Candle[] a = new Candle[al];
 		Candle[] b = new Candle[bl];
 		System.arraycopy(candles, 0, a, 0, al);
 		System.arraycopy(candles, al, b, 0, bl);
-
 		double lastPrice = a[a.length - 1].getOpen();
 
 		Instance instance = new Instance(b.length > 0);
 		computeFeatures(a, lastPrice, instance);
 		if (b.length > 0) {
-			computeTarget(b, lastPrice, buying, instance);
+			computeRelativePriceChange(b, lastPrice, buying, instance);
+			/*double previousVolume = 0;
+			for (Candle c : a) {
+				previousVolume += c.getVolume();
+			}
+			previousVolume /= a.length;
+			computeRelativeVolumeChange(b, previousVolume, instance);*/
 		}
 		return instance;
-	}
-
-	private double[] extract(Candle[] candles, Function<Candle, Double> f) {
-		double[] a = new double[candles.length];
-		for (int i = 0; i < candles.length; i++) {
-			a[i] = f.apply(candles[i]);
-		}
-		return a;
 	}
 
 	private void computeFeatures(Candle[] candles, double lastPrice, Instance instance) {
@@ -84,7 +81,7 @@ public class SimpleFeaturizer implements Featurizer {
 				//continue;
 			}
 			k++;
-// TODO moving average
+			// TODO moving average
 			double hiLo = r.r((c.getHigh() + c.getLow()) / 2);
 			double open = r.r(c.getOpen());
 			double var = (c.getHigh() - c.getLow()) / lastPrice;
@@ -92,7 +89,7 @@ public class SimpleFeaturizer implements Featurizer {
 			instance.addNumeric(open);
 			instance.addNumeric(var);
 			// need those relative:
-			
+
 			instance.addNumeric(c.getNumberOfTrades());
 			instance.addNumeric(c.getVolume());
 			instance.addNumeric(c.getQuoteAssetVolume());
@@ -140,7 +137,7 @@ public class SimpleFeaturizer implements Featurizer {
 		return b;
 	}
 
-	private void computeTarget(Candle[] candles, double lastPrice, boolean buying, Instance instance) {
+	private void computeRelativePriceChange(Candle[] candles, double lastPrice, boolean buying, Instance instance) {
 		Relative r = new Relative(lastPrice);
 		double sell;
 		// sell = new Sample(ca.flatten(c -> c.getHigh())).max();
@@ -153,37 +150,82 @@ public class SimpleFeaturizer implements Featurizer {
 				throw new RuntimeException();
 			}
 		}
-
-		Candle l = candles[candles.length - 1];
-		sell = l.getClose();
+		//Candle l = candles[candles.length - 1];
+		//sell = l.getClose();
 
 		//double sell = new Sample(ca.flatten(c -> c.getHigh())).average();
-		sell = getSellPrice(candles, r);
+		/*sell = getMaxPrice(candles, r);
 
 		double relativeGain = r.r(sell);
 		if (!buying) {
 			relativeGain *= -1;
-		}
+		}*/
+		//double relativeGain = transform(getSellGain(candles, r));
+		double relativeGain = getSellGain(candles, r);
+
 		instance.addNumeric(relativeGain);
 	}
 
-	Doubles limitValue = new Doubles();
-	Doubles stopValue = new Doubles();
-	Doubles averageValue = new Doubles();
+	private void computeAmplitude(Candle[] candles, double previousVolume, Instance instance) {
+		for (Candle c : candles) {
+			
+		}
+		instance.addNumeric(getVolumeChange(candles, previousVolume));
+	}
+	
+	private void computeRelativeVolumeChange(Candle[] candles, double previousVolume, Instance instance) {
+		instance.addNumeric(getVolumeChange(candles, previousVolume));
+	}
 
-	private double getSellPrice(Candle[] candles, Relative r) {
-		double limit = 0.0015 * 40;
+	private double getVolumeChange(Candle[] candles, double oldVolume) {
+		double sum = 0;
 		for (int i = 0; i < candles.length; i++) {
-			Candle c = candles[i];
-			double gain = r.r(c.getClose());
-			if (gain > limit) {
-				limitValue.add(r.r(c.getClose()));
-				return c.getClose();
+			sum += candles[i].getVolume();
+		}
+		System.out.println("? " + candles.length + " " + sum + " " + oldVolume);
+		return (sum / candles.length - oldVolume) / oldVolume;
+	}
 
-			}
-			if (gain < -limit) {
-				stopValue.add(r.r(c.getOpen()));
-				return c.getOpen();
+	/*Doubles limitValue = new Doubles();
+	Doubles stopValue = new Doubles();
+	Doubles averageValue = new Doubles();*/
+	private double getMaxPrice(Candle[] candles, Relative r) {
+		Sample s = new Sample(candles, c -> c.getClose());
+		return s.max();
+	}
+
+	private double getMinPrice(Candle[] candles, Relative r) {
+		Sample s = new Sample(candles, c -> c.getClose());
+		return s.min();
+	}
+
+	private double getSellGain(Candle[] candles, Relative r) {
+		// VISUALIZE the good ones!!!! ARIMA?
+		// finer start and end plots
+		// TODO optimizer, see various windows and stops
+
+		//double limit = 0.0015 * 50;
+		// PRINT max vs. gain
+		// TODO make it relative to gain? or last growth?
+		// isolate and optimize this - subset of windows, measure, go through parameters
+		double limit = 10;
+		double stop = -0.0015;
+		double movingStop = stop;
+		if (false) { // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			// if profit, start selling proportionally to its size?
+			// dump windows predicted high, set stop and limit randomly for each combination of time/10, profit and prediction percentile
+			for (int i = 0; i < candles.length; i++) {
+				Candle c = candles[i];
+				double gain = r.r(c.getClose());
+				if (gain > limit) {
+					//return limit;
+				}
+				if (gain < movingStop) {
+					return movingStop;
+				}
+				if (gain + stop > movingStop) {
+					movingStop = gain + stop;
+				}
 			}
 		}
 		int total = 0;
@@ -194,14 +236,23 @@ public class SimpleFeaturizer implements Featurizer {
 			avg += c.getClose();
 			total++;
 		}
-		averageValue.add(r.r(avg / total));
-		return avg / total;
+		//System.out.println("total " + total);
+		//averageValue.add(r.r(avg / total));
+		return r.r(avg / total);
+	}
+
+	private double transform(double v) {
+		if (v >= 0) {
+			return Math.sqrt(v);
+		} else {
+			return -Math.sqrt(-v);
+		}
 	}
 
 	public void printStats() {
-		System.out.println("limit: " + new Sample(limitValue).average());
+		/*	System.out.println("limit: " + new Sample(limitValue).average());
 		System.out.println("stop:  " + new Sample(stopValue).average());
-		System.out.println("avg:   " + new Sample(averageValue).average());
+		System.out.println("avg:   " + new Sample(averageValue).average());*/
 	}
 }
 

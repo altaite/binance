@@ -32,8 +32,12 @@ public class GlobalDirs {
 		return home;
 	}
 
-	public Path getExperimentDir(SymbolPair pair) {
-		Path p = home.resolve("data_" + pair);
+	public Path getExperiments() {
+		return home.resolve("experiments");
+	}
+
+	public Path getExperiment(SymbolPair pair, String description) {
+		Path p = getExperiments().resolve(pair + description);
 		createDirs(p);
 		return p;
 	}

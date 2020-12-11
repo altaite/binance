@@ -1,21 +1,38 @@
 package altaite.analysis;
 
 import java.util.Arrays;
+import java.util.function.Function;
 
 public class Sample {
 
 	private double[] a;
 
-	public Sample(double[] inputArray) {
-		this.a = new double[inputArray.length];
-		System.arraycopy(inputArray, 0, a, 0, inputArray.length);
+	public Sample(double[] input) {
+		this.a = new double[input.length];
+		System.arraycopy(input, 0, a, 0, input.length);
 		if (a.length < 1) {
 			System.err.println("Statistics empty.");
 		}
 	}
 
+	public <T> Sample(T[] input, Function<T, Double> f) {
+		this.a = new double[input.length];
+		for (int i = 0; i < a.length; i++) {
+			a[i] = f.apply(input[i]);
+		}
+	}
+
 	public Sample(Doubles doubles) {
 		this(doubles.toArray());
+	}
+
+	public Sample head(double percent) {
+		int first = (int) Math.round((a.length) * percent);
+		double[] head = new double[a.length - first];
+		for (int i = 0; i < head.length; i++) {
+			head[i] = a[first + i];
+		}
+		return new Sample(head);
 	}
 
 	public double min() {
@@ -69,6 +86,14 @@ public class Sample {
 		return 1;
 	}
 
+	public double getValueForPercentile(double percentile) {
+		double[] b = new double[a.length];
+		System.arraycopy(a, 0, b, 0, a.length);
+		Arrays.sort(b);
+		int i = (int) Math.round(percentile * (b.length - 1));
+		return b[i];
+	}
+
 	private static void test() {
 		double[] a = {50, 4, 3, -10, 2};
 		Sample sample = new Sample(a);
@@ -88,4 +113,29 @@ public class Sample {
 		System.out.println(sample.percentile(2));
 	}
 
+	public Sample box(double min, double max) {
+		double[] b = new double[a.length];
+		for (int i = 0; i < a.length; i++) {
+			if (a[i] < min) {
+				b[i] = min;
+			} else if (max < a[i]) {
+				b[i] = max;
+			} else {
+				b[i] = a[i];
+			}
+		}
+		return new Sample(b);
+	}
+
+	public static void main(String[] args) {
+		double[] ds = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+		Sample sample = new Sample(ds);
+		for (double p = 0; p <= 1.01; p += 0.1) {
+			System.out.println(" " + p);
+			for (double d : sample.head(p).a) {
+				System.out.print(d + " ");
+			}
+			System.out.println("");
+		}
+	}
 }

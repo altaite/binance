@@ -1,5 +1,7 @@
 package altaite.learn.model;
 
+import altaite.analysis.Pair;
+import altaite.analysis.Sample2;
 import altaite.learn.Instance;
 import java.io.File;
 import java.io.FileInputStream;
@@ -39,16 +41,17 @@ public class RandomForestRegressionSmile implements Model {
 			DataFrame a = Read.arff(dataFile);
 			Formula formula = Formula.lhs("target");
 			model = RandomForest.fit(formula, a);
-
-			/*	model.predict(a.get(10));
-
-			serialize();
-			deserialize();
-
-			model.predict(a.get(10));
-			Tuple tuple = doubleToTuple(new double[900]);
-			model.predict(tuple);
-			 */
+			/*double[] importance = model.importance();
+			Sample2 sample = new Sample2();
+			for (int i =0;i<importance.length;i++) {
+				sample.add(i, importance[i]);
+			}
+			Sample2 byY = sample.createSortedByY();
+			System.out.println("Importances");
+			for (int i = 0; i < byY.size(); i++) {
+				Pair p = byY.get(i);
+				System.out.println(p.x + " " + p.y);
+			}*/
 		} catch (Exception ex) {
 			throw new RuntimeException(ex);
 		}

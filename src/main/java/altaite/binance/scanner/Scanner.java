@@ -30,7 +30,7 @@ public class Scanner {
 	public Scanner(GlobalDirs globalDirs, SymbolPair pair) {
 		this.globalDirs = globalDirs;
 		this.pair = pair;
-		this.dirs = new ExperimentDirs(globalDirs, pair);
+		this.dirs = new ExperimentDirs(globalDirs, pair, pars.getExperimentDescription());
 		this.model = new RandomForestRegressionSmile(this.dirs.getModel());
 		this.featurizer = new SimpleFeaturizer(pars);
 		this.interpreter = new PredictionInterpreter(dirs.getResultsRawCsv());
@@ -47,13 +47,13 @@ public class Scanner {
 	}
 
 	private void updateCandles() {
-		double monthsBack = ((double) pars.getIndependentWindowLength()) / 60 / 24 / 30;
+		double monthsBack = ((double) pars.getTargetN()) / 60 / 24 / 30;
 		System.out.println("Updating ... " + monthsBack);
 		chart = storage.update(pair, monthsBack);
 	}
 
 	private synchronized void predict() {
-		Candle[] a = chart.getEnd(pars.getIndependentWindowLength());
+		Candle[] a = chart.getEnd(pars.getTargetN());
 		check(a);
 		Window w = new Window(a);
 		Instance instance = featurizer.createInstance(w);

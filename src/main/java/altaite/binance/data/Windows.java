@@ -79,9 +79,11 @@ public class Windows implements Iterable<Window> {
 		Window[] wb = new Window[windows.size() - b];
 		for (int i = 0; i < wa.length; i++) {
 			wa[i] = windows.get(i);
+			//System.out.println("wa " + i);
 		}
 		for (int i = 0; i < wb.length; i++) {
 			wb[i] = windows.get(b + i);
+			//System.out.println("wb " + (b + i));
 		}
 		Windows[] w = {new Windows(wa), new Windows(wb)};
 		return w;

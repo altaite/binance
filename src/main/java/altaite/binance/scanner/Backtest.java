@@ -37,19 +37,9 @@ public class Backtest {
 
 	private GlobalDirs globalDirs = new GlobalDirs(GlobalDirs.defaultDir);
 	private ExperimentParameters pars = new ExperimentParameters();
-	Featurizer featurizer = new SimpleFeaturizer(pars);
-	private boolean update = false;
+	private Featurizer featurizer = new SimpleFeaturizer(pars);
+	private boolean update = true;
 	private int readMax = Integer.MAX_VALUE;
-	// immediate fast growth
-	// breaks long term high
-	// !!! maybe just accelerating significant growth
-	// TODO
-	// build minute cache
-	// if speed needed, add realtime
-	//BinanceApiWebSocketClient client = BinanceApiClientFactory.newInstance().newWebSocketClient();
-	// Listen for aggregated trade events for ETH/BTC
-	//client.onAggTradeEvent (
-	//"ethbtc", response -> System.out.println(response));
 	private Map<String, Long> numbers = new HashMap<>();
 
 	private CandleStorage storage = new CandleStorage(globalDirs.getCandleStorage());
@@ -57,47 +47,60 @@ public class Backtest {
 
 	private void evaluate() {
 		List<SymbolPair> pairs = getPairs();
+		//for (int i = 10; i < 11; i++) {
 		for (int i = 0; i < 1; i++) {
-			String code = pairs.get(i).toString();
-			if (!code.contains("BTC")) {
+			SymbolPair pair = pairs.get(i);
+			if (!pair.toString().contains("BTC")) {
+				System.out.println("SKIPPING PAIR " + pair);
 				continue;
 			}
-			System.out.println("PAIR " + code);
-			ExperimentDirs dirs = new ExperimentDirs(globalDirs.getExperimentDir(pairs.get(i)));
-			Sample2 results;
+			System.out.println("PAIR " + pair);
 			Candles candles;
 			if (update) {
-				candles = storage.update(pairs.get(i), pars.getMonthsBack());
+				candles = storage.update(pair, pars.getMonthsBack());
+				storage.save(pair);
 			} else {
-				candles = storage.get(pairs.get(i), readMax);
+				candles = storage.get(pair, readMax);
 			}
+			for (int targetN = 1; targetN < 2000; targetN *= 2) {
 
-			WindowsFactory wf = new WindowsFactory(candles, pars);
-			Windows windows = wf.createWindows();
+				pars.setTargetN(targetN);
 
-			System.out.println("windows " + windows.size());
-			Windows[] ws = windows.splitByTime(0.66);
-
-			Windows train = ws[0].sample(Math.min(pars.trainSamples, ws[0].size()));
-			Windows test = ws[1].sample(Math.min(pars.testSamples, ws[1].size()));
-
-			createDataset(train, dirs.getTrain());
-			featurizer.printStats();
-			createDataset(test, dirs.getTest());
-			featurizer.printStats();
-			Model model = createModel(dirs);
-			results = testModel(model, test, dirs); // first simple eval using only arff? for histograms
-
-			RegressionResults rr = new RegressionResults(results, test, globalDirs, dirs);
-			rr.save();
-
-			trade(model, test, rr.getInterpreter());
-
-			// later plan?? 
-			// visualize sensible information in real time, and on plots
-			//Trader trader = new Trader(model);
-			//evaluateTrader(trader);
+				evaluateExperiment(candles);
+			}
 		}
+	}
+
+	private void evaluateExperiment(Candles candles) {
+		ExperimentDirs dirs = new ExperimentDirs(globalDirs.getExperiment(
+			candles.getPair(), pars.getExperimentDescription()));
+		Sample2 results;
+
+		WindowsFactory wf = new WindowsFactory(candles, pars);
+		Windows windows = wf.createWindows();
+
+		System.out.println("windows " + windows.size());
+		Windows[] ws = windows.splitByTime(0.66);
+
+		Windows train = ws[0].sample(Math.min(pars.trainSamples, ws[0].size()));
+		Windows test = ws[1].sample(Math.min(pars.testSamples, ws[1].size()));
+
+		createDataset(train, dirs.getTrain());
+		featurizer.printStats();
+		createDataset(test, dirs.getTest());
+		featurizer.printStats();
+		Model model = createModel(dirs);
+		results = testModel(model, test, dirs); // first simple eval using only arff? for histograms
+
+		RegressionResults rr = new RegressionResults(results, test, globalDirs, dirs);
+		rr.save();
+
+		trade(model, test, rr.getInterpreter());
+
+		// later plan?? 
+		// visualize sensible information in real time, and on plots
+		//Trader trader = new Trader(model);
+		//evaluateTrader(trader);
 	}
 
 	private void trade(Model model, Windows windows, PredictionInterpreter interpreter) {
@@ -109,7 +112,7 @@ public class Backtest {
 			double pct = interpreter.percentilePredicted(predicted);
 			if (pct > 0.995) {
 				String time = Format.date(w.getEnd());
-				System.out.println(time + " " + pct + " " + predicted + " " + real);
+				System.out.println(time + " " + pct + " ~" + predicted + " " + real);
 			}
 		}
 

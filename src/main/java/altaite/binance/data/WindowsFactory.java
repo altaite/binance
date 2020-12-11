@@ -17,7 +17,7 @@ public class WindowsFactory {
 	public Windows createWindows() {
 		Windows windows = new Windows();
 		CandleArray a = candles.getCandleArray();
-		for (int i = 0; i < a.size() - params.getWindowLength(); i += params.getJump()) {
+		for (int i = 0; i < a.size() - params.getWindowN(); i += params.getJump()) {
 			Window w = createWindow(a, i);
 			if (w != null) {
 				windows.add(w);
@@ -27,7 +27,7 @@ public class WindowsFactory {
 	}
 
 	public Window createWindow(CandleArray all, int index) {
-		Candle[] a = new Candle[params.getWindowLength()];
+		Candle[] a = new Candle[params.getWindowN()];
 		System.arraycopy(all.getArray(), index, a, 0, a.length);
 		int totalHoles = 0;
 		boolean valid = true;

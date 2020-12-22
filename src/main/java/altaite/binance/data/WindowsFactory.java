@@ -7,17 +7,17 @@ import altaite.binance.data.window.ExperimentParameters;
 public class WindowsFactory {
 
 	private Candles candles;
-	private ExperimentParameters params;
+	private ExperimentParameters pars;
 
-	public WindowsFactory(Candles candles, ExperimentParameters params) {
+	public WindowsFactory(Candles candles, ExperimentParameters parameters) {
 		this.candles = candles;
-		this.params = params;
+		this.pars = parameters;
 	}
 
 	public Windows createWindows() {
 		Windows windows = new Windows();
 		CandleArray a = candles.getCandleArray();
-		for (int i = 0; i < a.size() - params.getWindowN(); i += params.getJump()) {
+		for (int i = 0; i < a.size() - pars.getWindowN(); i += pars.getJump()) {
 			Window w = createWindow(a, i);
 			if (w != null) {
 				windows.add(w);
@@ -27,15 +27,13 @@ public class WindowsFactory {
 	}
 
 	public Window createWindow(CandleArray all, int index) {
-		Candle[] a = new Candle[params.getWindowN()];
+		Candle[] a = new Candle[pars.getWindowN()];
 		System.arraycopy(all.getArray(), index, a, 0, a.length);
-		int totalHoles = 0;
 		boolean valid = true;
 		for (int i = 0; i < a.length - 1; i++) {
 			long d = a[i + 1].getOpenTime() - a[i].getOpenTime();
 			if (d != 60 * 1000) {
 				valid = false;
-				totalHoles++;
 			}
 		}
 		for (int i = 0; i < a.length; i++) {

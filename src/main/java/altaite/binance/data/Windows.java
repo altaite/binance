@@ -3,6 +3,8 @@ package altaite.binance.data;
 import altaite.analysis.Sampling;
 import altaite.binance.data.window.Window;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 
@@ -24,10 +26,35 @@ public class Windows implements Iterable<Window> {
 		return ws;
 	}
 
+	public void sort() {
+		Collections.sort(windows);
+	}
+
+	public long getMedianTime() {
+		long[] times = new long[windows.size()];
+		for (int i = 0; i < times.length; i++) {
+			times[i] = windows.get(i).getStart();
+		}
+		Arrays.sort(times);
+		return times[times.length / 2];
+	}
+
 	public Windows(Window[] a) {
 		for (Window w : a) {
 			windows.add(w);
 		}
+	}
+
+	public void add(Window w) {
+		windows.add(w);
+	}
+
+	public void add(Windows other) {
+		windows.addAll(other.getWindows());
+	}
+
+	public List<Window> getWindows() {
+		return windows;
 	}
 
 	public Window get(int i) {
@@ -40,15 +67,27 @@ public class Windows implements Iterable<Window> {
 		}
 	}
 
-	public void add(Window w) {
-		windows.add(w);
-	}
-
 	public int size() {
 		return windows.size();
 	}
 
-	public Windows[] splitByTime(double percent) {
+	public Windows[] split(long time) {
+		long span = windows.get(0).getEnd() - windows.get(0).getStart();
+		Windows a = new Windows();
+		Windows b = new Windows();
+		for (Window w : windows) {
+
+			if (w.getStart() < time - span / 2) {
+				a.add(w);
+			} else if (w.getStart() > time + span / 2) {
+				b.add(w);
+			}
+		}
+		Windows[] ws = {a, b};
+		return ws;
+	}
+
+	public Windows[] splitByPercent(double percent) {
 		boolean overlap = false;
 		int a = 0;
 		int b = windows.size() - 1;
@@ -65,13 +104,13 @@ public class Windows implements Iterable<Window> {
 				bb = true;
 				ab = false;
 			}
-			if (windows.get(a).getEnd() > windows.get(b).getStart()) {
+			if (windows.get(a).getEnd() >= windows.get(b).getStart()) {
 				overlap = true;
 				if (ab) {
 					a--;
 				}
 				if (bb) {
-					b--;
+					b++;
 				}
 			}
 		}
@@ -87,6 +126,28 @@ public class Windows implements Iterable<Window> {
 		}
 		Windows[] w = {new Windows(wa), new Windows(wb)};
 		return w;
+	}
+
+	public long getMinTime() {
+		long min = Long.MAX_VALUE;
+		for (Window w : windows) {
+			long t = w.getStart();
+			if (t < min) {
+				min = t;
+			}
+		}
+		return min;
+	}
+
+	public long getMaxTime() {
+		long max = Long.MIN_VALUE;
+		for (Window w : windows) {
+			long t = w.getStart();
+			if (t > max) {
+				max = t;
+			}
+		}
+		return max;
 	}
 
 	@Override

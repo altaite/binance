@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -73,14 +74,43 @@ public class Candles {
 		long last = getLastTime();
 		Candle[] a = new Candle[minutes];
 		int i = 0;
-		for (long l = last - minutes * 60000; l < last; l += 60000) {
+		for (long l = last - minutes * 60000L; l < last; l += 60000) {
 			a[i++] = map.get(l);
 		}
 		return a;
 	}
 
+	public Candle[] getEndInterval(int a, int b) {
+		long last = getLastTime();
+		Candle[] candles = new Candle[a - b + 1];
+		int i = 0;
+		for (long l = last - a * 60000L; l <= last - b * 60000L; l += 60000) {
+			candles[i++] = map.get(l);
+		}
+
+		/*for (int k = 0; k < candles.length; k++) {
+			if (candles[k] == null) {
+				throw new RuntimeException("" + k + " " + candles.length);
+			}
+		}*/
+		return candles;
+	}
+
 	public long getLastTime() {
 		return map.lastKey();
+	}
+
+	private void saveAll() {
+		int total = 0;
+		try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, true))) {
+			for (Candle c : map.values()) {
+				c.write(dos);
+				total++;
+			}
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
+		}
+		System.out.println("Saved " + total + " candles to " + file);
 	}
 
 	void save() {
@@ -118,26 +148,64 @@ public class Candles {
 				if (c.getOpenTime() > lastTimeInFile) {
 					lastTimeInFile = c.getOpenTime();
 				}
+				//c.invert(); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 				map.put(c.getOpenTime(), c);
 			}
 		} catch (IOException ex) {
 			throw new RuntimeException(ex);
 		}
+		//fixOpenCloseCorruption();
 		check();
 		System.out.println("...loaded " + map.size());
 		System.out.println("Last time in file is " + Format.date(lastTimeInFile));
 	}
 
+	private void fixOpenCloseCorruption() {
+		for (Candle c : map.values()) {
+			if (c.getCloseTime() - c.getOpenTime() != 59999) {
+				c.setCloseTime(c.getOpenTime() + 59999);
+			}
+		}
+	}
+
 	private void check() {
 		Candle old = null;
+		List<Long> remove = new ArrayList<>();
 		for (Candle c : map.values()) {
 			if (old != null) {
-				long gap = c.getOpenTime() - old.getOpenTime();
+				{
+					long gap = c.getOpenTime() - old.getOpenTime();
+					if (gap > 60000) {
+						System.out.println("GAP " + hours(gap) + " " + Time.format(c.getOpenTime()));
+					} else if (gap < 60000) {
+						System.err.println(Format.date(old.getOpenTime()));
+						System.err.println(Format.date(c.getOpenTime()));
+						remove.add(old.getOpenTime());
+						remove.add(c.getOpenTime());
+						//throw new RuntimeException(" " + (c.getOpenTime() - old.getOpenTime()));
+					}
+				}
+				long gap = c.getCloseTime() - old.getCloseTime();
 				if (gap > 60000) {
-					System.out.println("GAP " + hours(gap) + " " + Time.format(c.getOpenTime()));
+					System.out.println("GAP " + hours(gap) + " " + Time.format(c.getCloseTime()));
+				} else if (gap < 60000) {
+					System.err.println(Format.date(old.getOpenTime()));
+					System.err.println(Format.date(old.getCloseTime()));
+					System.err.println(Format.date(c.getOpenTime()));
+					System.err.println(Format.date(c.getCloseTime()));
+					remove.add(old.getOpenTime());
+					remove.add(c.getOpenTime());
+					//throw new RuntimeException(" " + (c.getCloseTime() - old.getCloseTime()));
 				}
 			}
 			old = c;
+		}
+		if (!remove.isEmpty()) {
+			System.out.println("Removing " + remove.size() + " corrupted candles.");
+			for (long l : remove) {
+				map.remove(l);
+			}
+			saveAll();
 		}
 	}
 
@@ -145,7 +213,6 @@ public class Candles {
 		return ms / (1000L * 3600);
 	}
 
-	// suspicious, why always 1 updated
 	public void update(BinanceApiRestClient rest, double monthsBack) {
 		System.out.println("Updating...");
 		Long lastInFile = getMaxTime();
@@ -174,7 +241,13 @@ public class Candles {
 				}
 			}
 			//System.out.println("updated " + list.size() + " " + Time.format(startTime));
-			startTime = getMaxTime() + 1; // roughly
+
+			Long maxTime = getMaxTime();
+			if (maxTime != null) {
+				startTime = getMaxTime() + 1; // roughly
+			} else {
+				startTime += 1000;
+			}
 		}
 		check();
 		System.out.println("...updated.");

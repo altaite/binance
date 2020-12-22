@@ -1,6 +1,8 @@
 package altaite.analysis;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.Function;
 
 public class Sample {
@@ -16,9 +18,19 @@ public class Sample {
 	}
 
 	public <T> Sample(T[] input, Function<T, Double> f) {
-		this.a = new double[input.length];
+		List<Double> list = new ArrayList<>();
+		int nulls = 0;
+		for (int i = 0; i < input.length; i++) {
+			if (input[i] == null) {
+				nulls++;
+			} else {
+				list.add(f.apply(input[i]));
+			}
+		}
+		//System.err.println(nulls + " of sample input is null out of " + input.length);
+		this.a = new double[list.size()];
 		for (int i = 0; i < a.length; i++) {
-			a[i] = f.apply(input[i]);
+			a[i] = list.get(i);
 		}
 	}
 

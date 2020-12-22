@@ -1,11 +1,18 @@
 package altaite.binance.global.io;
 
 import altaite.binance.data.SymbolPair;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.StringTokenizer;
 
 public class GlobalDirs {
 
@@ -46,8 +53,20 @@ public class GlobalDirs {
 		return home.resolve("colors.png").toFile();
 	}
 
+	public Path getPictures() {
+		Path p = home.resolve("pictures");
+		createDirs(p);
+		return p;
+	}
+
 	public Path getCandleStorage() {
 		Path p = home.resolve("candle_storage_00");
+		createDirs(p);
+		return p;
+	}
+
+	public Path getCandleStorageMedium() {
+		Path p = home.resolve("candle_storage_medium_00");
 		createDirs(p);
 		return p;
 	}
@@ -58,11 +77,37 @@ public class GlobalDirs {
 		return p;
 	}
 
-	public File getMostTradedPairs() {
-		return home.resolve("most_traded.txt").toFile();
-	}
-
 	public File getCurrencySymbols() {
 		return home.resolve("currency_symbols.txt").toFile();
 	}
+
+	public List<SymbolPair> getMostTradedPairs() {
+		List<SymbolPair> pairs = new ArrayList<>();
+		Set<SymbolPair> set = new HashSet<>();
+		try (BufferedReader br = new BufferedReader(new FileReader(home.resolve("most_traded.txt").toFile()))) {
+			String line;
+			while ((line = br.readLine()) != null) {
+				StringTokenizer st = new StringTokenizer(line, "/");
+				String a = st.nextToken();
+				String b = st.nextToken();
+				if (b.equals("BUSD")) {
+					b = "USDT";
+				}
+				SymbolPair pair = new SymbolPair(a, b);
+				if (!set.contains(pair)) {
+					pairs.add(pair);
+					set.add(pair);
+				}
+			}
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
+		}
+		return pairs;
+	}
+
+	public File getQualitiesCsv() {
+		Path p = home.resolve("qualities.csv");
+		return p.toFile();
+	}
+
 }

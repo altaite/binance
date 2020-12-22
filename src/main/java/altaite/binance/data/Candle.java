@@ -32,6 +32,13 @@ public class Candle {
 
 	private static boolean inversionWarningDisplayed = false;
 
+	/**
+	 * To fixes possible data corruption at Binance 2020/12/21 06:08:00
+	 */
+	public void setCloseTime(long l) {
+		this.closeTime = l;
+	}
+
 	public void invert() {
 		open *= -1;
 		close *= -1;

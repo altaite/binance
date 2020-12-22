@@ -17,7 +17,7 @@ public class Sampling {
 		Collections.shuffle(list, random);
 		list.toArray(array);
 		boolean[] sample = new boolean[originalSize];
-		for (int i = 0; i < sampleSize; i++) {
+		for (int i = 0; i < Math.min(sampleSize, originalSize); i++) {
 			sample[array[i]] = true;
 		}
 		return sample;

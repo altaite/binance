@@ -1,8 +1,5 @@
 package altaite.binance.scanner;
 
-import altaite.analysis.Sample2;
-import altaite.analysis.RegressionResults;
-import altaite.analysis.Sampling;
 import altaite.binance.data.CandleStorage;
 import altaite.binance.data.Candles;
 import altaite.binance.data.SymbolPair;
@@ -10,47 +7,47 @@ import altaite.binance.data.Windows;
 import altaite.binance.data.WindowsFactory;
 import altaite.binance.data.window.Window;
 import altaite.binance.data.window.ExperimentParameters;
-import altaite.binance.features.Featurizer;
-import altaite.binance.features.SimpleFeaturizer;
-import altaite.binance.global.io.ExperimentDirs;
+import altaite.binance.features.HighFeaturizer;
 import altaite.binance.global.io.GlobalDirs;
-import altaite.binance.trader.Trader;
-import altaite.format.Format;
 import altaite.learn.Dataset;
 import altaite.learn.Instance;
-import altaite.learn.model.Model;
-import altaite.learn.model.RandomForestRegressionSmile;
-import com.binance.api.client.domain.event.AllMarketTickersEvent;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
+import java.nio.file.Paths;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.StringTokenizer;
 
 public class Backtest {
 
 	private GlobalDirs globalDirs = new GlobalDirs(GlobalDirs.defaultDir);
 	private ExperimentParameters pars = new ExperimentParameters();
-	private Featurizer featurizer = new SimpleFeaturizer(pars);
+	private HighFeaturizer featurizer = new HighFeaturizer(pars);
 	private boolean update = true;
 	private int readMax = Integer.MAX_VALUE;
 	private Map<String, Long> numbers = new HashMap<>();
-
 	private CandleStorage storage = new CandleStorage(globalDirs.getCandleStorage());
-	private boolean compute = true;
 
 	private void evaluate() {
-		List<SymbolPair> pairs = getPairs();
+		List<SymbolPair> pairs = globalDirs.getMostTradedPairs();
+		Windows allPositive = new Windows();
+		Windows allNegative = new Windows();
+
+		// TRY FIRST real life data, simple, telling, just limit 1000 per pair
+		// probablky will not work with RF, but maybe bayes, or cost matrix
 		//for (int i = 10; i < 11; i++) {
-		for (int i = 0; i < 1; i++) {
-			SymbolPair pair = pairs.get(i);
-			if (!pair.toString().contains("BTC")) {
+		int done = 0;
+		for (int pi = 0; pi < 1/*pairs.size()*/; pi++) {
+			/*if (done > 20) {
+				break;
+			}*/
+			// TODO test on each separatelly, generate files, plus generate normal distribution
+			SymbolPair pair = pairs.get(pi);
+
+			// TODO full set and btc uncorelated manually in file
+			// TODO real life test same as before, possibly breakdown by market
+			if (!pair.toString().contains("BTC")
+				|| pair.toString().contains("USDC")
+				|| pair.toString().contains("BUSD")) {
 				System.out.println("SKIPPING PAIR " + pair);
 				continue;
 			}
@@ -62,79 +59,86 @@ public class Backtest {
 			} else {
 				candles = storage.get(pair, readMax);
 			}
-			for (int targetN = 1; targetN < 2000; targetN *= 2) {
+			WindowsFactory wf = new WindowsFactory(candles, pars);
+			Windows windows = wf.createWindows();
 
-				pars.setTargetN(targetN);
+			Windows positive = new Windows();
 
-				evaluateExperiment(candles);
+			for (int i = 0; i < windows.size(); i++) {
+				Window w = windows.get(i);
+				if (featurizer.isHighRise(w)) {
+					positive.add(w);
+				}
 			}
-		}
-	}
 
-	private void evaluateExperiment(Candles candles) {
-		ExperimentDirs dirs = new ExperimentDirs(globalDirs.getExperiment(
-			candles.getPair(), pars.getExperimentDescription()));
-		Sample2 results;
+			Windows negative = new Windows();
 
-		WindowsFactory wf = new WindowsFactory(candles, pars);
-		Windows windows = wf.createWindows();
-
-		System.out.println("windows " + windows.size());
-		Windows[] ws = windows.splitByTime(0.66);
-
-		Windows train = ws[0].sample(Math.min(pars.trainSamples, ws[0].size()));
-		Windows test = ws[1].sample(Math.min(pars.testSamples, ws[1].size()));
-
-		createDataset(train, dirs.getTrain());
-		featurizer.printStats();
-		createDataset(test, dirs.getTest());
-		featurizer.printStats();
-		Model model = createModel(dirs);
-		results = testModel(model, test, dirs); // first simple eval using only arff? for histograms
-
-		RegressionResults rr = new RegressionResults(results, test, globalDirs, dirs);
-		rr.save();
-
-		trade(model, test, rr.getInterpreter());
-
-		// later plan?? 
-		// visualize sensible information in real time, and on plots
-		//Trader trader = new Trader(model);
-		//evaluateTrader(trader);
-	}
-
-	private void trade(Model model, Windows windows, PredictionInterpreter interpreter) {
-		for (Window w : windows) {
-			Instance i = featurizer.createInstance(w);
-			double real = i.getTarget();
-			double predicted = model.predict(i);
-
-			double pct = interpreter.percentilePredicted(predicted);
-			if (pct > 0.995) {
-				String time = Format.date(w.getEnd());
-				System.out.println(time + " " + pct + " ~" + predicted + " " + real);
+			for (int i = 0; i < windows.size(); i++) {
+				Window w = windows.get(i);
+				if (!featurizer.isHighRise(w)) {
+					negative.add(w);
+				}
 			}
-		}
+			negative = negative.sample(positive.size());
 
-	}
+			System.out.println("POSITIVE " + positive.size());
+			System.out.println("NEGATIVE " + negative.size());
+			int sampleSize = Math.min(positive.size(), 10000); 
 
-	private Sample2 testModel(Model model, Windows windows, ExperimentDirs dirs) {
-		System.out.println("Evaluating windows: " + windows.size());
-		Sample2 s = new Sample2();
-		for (Window w : windows) {
-			Instance i = featurizer.createInstance(w);
-			double real = i.getTarget();
-			double predicted = model.predict(i);
-			s.add(real, predicted);
+			Windows ns = negative.sample(sampleSize);
+			Windows ps = positive.sample(sampleSize);
+
+			System.out.println("POSITIVE S " + ps.size());
+			System.out.println("NEGATIVE S " + ns.size());
+
+			allNegative.add(ns);
+			allPositive.add(ps);
+			done++;
 		}
-		s.toCsv(dirs.getResultsRawCsv());
-		return s;
-		//Trader trader = new Trader();
-		//for (Window w : windows) {
-		// evaluator should give trader candles one by one
-		// instance stripped of target, create from window
-		//	double profit = trader.trade();
-		//}
+		System.out.println("ALL POSITIVE " + allPositive.size());
+		System.out.println("ALL NEGATIVE " + allNegative.size());
+		allPositive.sort();
+		allNegative.sort();
+		long time = (allPositive.getMedianTime() + allNegative.getMedianTime()) / 2;
+		System.out.println("median time " + time);
+		Windows[] positiveFolds = allPositive.split(time);
+		Windows[] negativeFolds = allNegative.split(time);
+
+		System.out.println("p1 " + positiveFolds[0].size());
+		System.out.println("p2 " + positiveFolds[1].size());
+
+		System.out.println("n1 " + negativeFolds[0].size());
+		System.out.println("n2 " + negativeFolds[1].size());
+
+		int one = Math.min(positiveFolds[0].size(), negativeFolds[0].size());
+		int two = Math.min(positiveFolds[1].size(), negativeFolds[1].size());
+		positiveFolds[0] = positiveFolds[0].sample(one);
+		negativeFolds[0] = negativeFolds[0].sample(one);
+
+		Windows reals = new Windows();
+		reals.add(positiveFolds[1]);
+		reals.add(negativeFolds[1]);
+		createDataset(reals, Paths.get("d:/t/data/binance/high_test_real.arff"));
+
+		positiveFolds[1] = positiveFolds[1].sample(two);
+		negativeFolds[1] = negativeFolds[1].sample(two);
+
+		Windows ones = new Windows();
+		ones.add(positiveFolds[0]);
+		ones.add(negativeFolds[0]);
+		createDataset(ones, Paths.get("d:/t/data/binance/high_train.arff"));
+
+		Windows twos = new Windows();
+		twos.add(positiveFolds[1]);
+		twos.add(negativeFolds[1]);
+		createDataset(twos, Paths.get("d:/t/data/binance/high_test.arff"));
+
+		// try different stop-limit on third fold, just optimize total earnings
+		// also threshold for buy
+		// if fixed combination is found and strongly helps:
+		// combination which works vs. not work, predict which ones will, then generate all and let model pick one
+		// TODO sample third fold, real life distribution
+		// DO this for fall
 	}
 
 	private void createDataset(Windows windows, Path file) {
@@ -148,94 +152,6 @@ public class Backtest {
 		}
 		dataset.toArff(file.toFile());
 		System.out.println("Features: " + n + " Instances: " + windows.size() + " from total " + windows.size());
-
-	}
-
-	private Model createModel(ExperimentDirs dirs) {
-		Model model = new RandomForestRegressionSmile(dirs.getTrain(), dirs.getRandomForest());
-		return model;
-	}
-
-	private void evaluateTrader(Trader trader) {
-
-	}
-
-	// SIMPLE
-	// just collect values, store double
-	// remember addNominal or numberic, check
-	// addNominal, addNumberic, newInstance
-	// string name of variable as optional parameter
-	// TODO
-	// reflection, name from java
-	// Integer, Double, or arrays of those
-	// detect nulls
-	// derive nominals before writing
-	//
-
-	/*private Dataset createDataset(List<Window> windows) {
-		Type type = new Type();
-
-		Feature[] lows = new Feature[windowALength];
-		for (int i = 0; i < windowALength; i++) {
-			lows[i] = type.addNumericalFeature("low_" + i);
-		}
-		int[] targetLabels = {0, 1};
-		Feature target = type.addNominalFeature("drop", targetLabels);
-
-		Dataset data = new Dataset(type);
-
-		for (Window w : windows) {
-			Instance instance = new Instance(type);
-			for (int i = 0; i < windowALength; i++) {
-				instance.setNumericalValue(lows[i], w.get(i).getLow());
-			}
-			boolean drop = false;
-			double last = w.get(windowALength - 1).getLow() * 0.98;
-			for (int i = windowALength; i < windowALength + windowBLength; i++) {
-				if (w.get(i).getLow() < last) {
-					drop = true;
-				}
-			}
-			instance.setNominalValue(target, drop ? 1 : 0);
-			data.add(instance);
-		}
-
-		return data;
-
-	}*/
-	private List<SymbolPair> getPairs() {
-		List<SymbolPair> pairs = new ArrayList<>();
-		Set<SymbolPair> set = new HashSet<>();
-		try (BufferedReader br = new BufferedReader(new FileReader(globalDirs.getMostTradedPairs()))) {
-			String line;
-			while ((line = br.readLine()) != null) {
-				StringTokenizer st = new StringTokenizer(line, "/");
-				String a = st.nextToken();
-				String b = st.nextToken();
-				if (b.equals("BUSD")) {
-					b = "USDT";
-				}
-				SymbolPair pair = new SymbolPair(a, b);
-				if (!set.contains(pair)) {
-					pairs.add(pair);
-					set.add(pair);
-				}
-			}
-		} catch (IOException ex) {
-			throw new RuntimeException(ex);
-		}
-		return pairs;
-	}
-
-	private void process(List<AllMarketTickersEvent> events) {
-		for (AllMarketTickersEvent e : events) {
-			if (numbers.containsKey(e.getSymbol())) {
-				//System.err.println(e.getSymbol());
-			} else {
-				numbers.put(e.getSymbol(), e.getTotalNumberOfTrades());
-				System.out.println(numbers.size());
-			}
-		}
 
 	}
 

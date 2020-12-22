@@ -72,15 +72,31 @@ public class PredictionInterpreter implements Serializable {
 	}
 
 	public Sample2 thresholdToAverageAboveThreshold() {
-		System.out.println("ineficient start");
 		Sample2 thresholdToAverage = new Sample2();
 		for (int i = 0; i < byY.size(); i++) {
 			double avg = averageStartingWith(byY.getXs(), i);
 			double predicted = byY.get(i).y;
 			thresholdToAverage.add(predicted, avg);
 		}
-		System.out.println("ineficient end");
 		return thresholdToAverage;
+	}
+
+	public Sample2 thresholdToSumAboveThreshold() {
+		Sample2 thresholdToSum = new Sample2();
+		for (int i = 0; i < byY.size(); i++) {
+			double sum = sumStartingWith(byY.getXs(), i);
+			double predicted = byY.get(i).y;
+			thresholdToSum.add(predicted, sum);
+		}
+		return thresholdToSum;
+	}
+
+	private double sumStartingWith(double[] realValues, int i) {
+		double sum = 0;
+		for (int k = i; k < realValues.length; k++) {
+			sum += realValues[k];
+		}
+		return sum;
 	}
 
 	private double averageStartingWith(double[] xs, int i) {

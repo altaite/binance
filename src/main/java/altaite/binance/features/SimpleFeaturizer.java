@@ -1,43 +1,15 @@
 package altaite.binance.features;
 
-import altaite.analysis.Doubles;
 import altaite.binance.data.Candle;
 import altaite.binance.data.window.Window;
 import altaite.learn.Instance;
 import altaite.analysis.Sample;
 import altaite.binance.data.window.ExperimentParameters;
-import java.util.function.Function;
 import org.jtransforms.fft.DoubleFFT_1D;
 
-// TODO
-// very simple few features, no great resolution, averages and trends
-// connect to ML, maybe do weka for simplicity
-// backtest - buy/sell model with simple thresholds
-// test on multiple markets, whole learning -> backtest workflow
-// ML API
-// ModelFactory(Dataset) -> Model (just predictions, double[] -> double for sipmlicity)
-// split data, produce results, train on all too
-// BackTest - split data, Trader.action(double[], model)
-
-/*
-price model -> optimize how much to buy and sell given: prediction, current diff
-
-train buy and sell separatelly?
-
-first sell: buy at random point, price prediction, current diff -> how much to sell / sell or not
-then buy: compute when i would sell, this gain is target feature -> same
-
-simple linear model, regression, svm, nn, rf
-possibly enrich with features from the price model
-OR
-nn for price, connect to train and sell, after some iterations unlock upper nn nondes
-
-
- */
 public class SimpleFeaturizer implements Featurizer {
 
 	private ExperimentParameters pars;
-	private boolean buying = true;
 
 	public SimpleFeaturizer(ExperimentParameters pars) {
 		this.pars = pars;
@@ -45,36 +17,23 @@ public class SimpleFeaturizer implements Featurizer {
 
 	@Override
 	public Instance createInstance(Window window) {
-		Candle[] candles = window.getCandles();
-		int al = pars.getFeatureN();
-		int bl = candles.length - al;
-		assert candles.length == al + bl : candles.length + " " + al + " " + bl;
-		assert pars.getWindowN() == al + bl;
-		Candle[] a = new Candle[al];
-		Candle[] b = new Candle[bl];
-		System.arraycopy(candles, 0, a, 0, al);
-		System.arraycopy(candles, al, b, 0, bl);
-		double lastPrice = a[a.length - 1].getOpen();
-
-		Instance instance = new Instance(b.length > 0);
-		computeFeatures(a, lastPrice, instance);
-		if (b.length > 0) {
-			computeRelativePriceChange(b, lastPrice, buying, instance);
-			/*double previousVolume = 0;
-			for (Candle c : a) {
-				previousVolume += c.getVolume();
-			}
-			previousVolume /= a.length;
-			computeRelativeVolumeChange(b, previousVolume, instance);*/
+		boolean windowWithTarget = window.size() > pars.getFeatureN();
+		Instance instance = new Instance(windowWithTarget);
+		setFeatures(window, instance);
+		if (windowWithTarget) {
+			setTarget(window, instance);
 		}
 		return instance;
 	}
 
-	private void computeFeatures(Candle[] candles, double lastPrice, Instance instance) {
+	private void setFeatures(Window window, Instance instance) {
 		// derive distribution chars from single candle
 		// then i can have same for multiple candles, just better?
 		// do some statistics on multiple candles?
-		Relative r = new Relative(lastPrice);
+
+		Candle[] candles = getFeatureCandles(window);
+		double buyPrice = getBuyPrice(window);
+		Relative r = new Relative(buyPrice);
 		int k = 0;
 		for (Candle c : candles) {
 			if (k < candles.length / 2) {
@@ -83,10 +42,10 @@ public class SimpleFeaturizer implements Featurizer {
 			k++;
 			// TODO moving average
 			double hiLo = r.r((c.getHigh() + c.getLow()) / 2);
-			double open = r.r(c.getOpen());
-			double var = (c.getHigh() - c.getLow()) / lastPrice;
+			double close = r.r(c.getClose());
+			double var = (c.getHigh() - c.getLow()) / buyPrice;
 			instance.addNumeric(hiLo);
-			instance.addNumeric(open);
+			instance.addNumeric(close);
 			instance.addNumeric(var);
 			// need those relative:
 
@@ -106,17 +65,22 @@ public class SimpleFeaturizer implements Featurizer {
 		 */
 		double[] high = new double[candles.length];
 		double[] low = new double[candles.length];
-		double[] open = new double[candles.length];
+		double[] close = new double[candles.length];
 		for (int i = 0; i < candles.length; i++) {
 			Candle c = candles[i];
 			high[i] = r.r(c.getHigh());
 			low[i] = r.r(c.getLow());
-			open[i] = r.r(c.getOpen());
+			close[i] = r.r(c.getClose());
 		}
 		addFourier(high, instance);
 		addFourier(low, instance);
-		addFourier(open, instance);
+		addFourier(close, instance);
 
+	}
+
+	private double getBuyPrice(Window w) {
+		Candle[] a = getFeatureCandles(w);
+		return a[a.length - 1].getClose();
 	}
 
 	private void addFourier(double[] inOut, Instance instance) {
@@ -127,7 +91,7 @@ public class SimpleFeaturizer implements Featurizer {
 		}
 	}
 
-	public double[] averagePairsFromEnd(double[] a) {
+	/*public double[] averagePairsFromEnd(double[] a) {
 		double[] b = new double[a.length / 2];
 		for (int i = 0; i < b.length; i++) {
 			double a1 = a[a.length - 1 - 2 * i];
@@ -136,13 +100,17 @@ public class SimpleFeaturizer implements Featurizer {
 		}
 		return b;
 	}
+	 */
+	private void setTarget(Window window, Instance instance) {
+		double relativeGain = computeTargetWithFee(window);
+		instance.addNumeric(relativeGain);
+	}
 
-	private void computeRelativePriceChange(Candle[] candles, double lastPrice, boolean buying, Instance instance) {
-		Relative r = new Relative(lastPrice);
-		double sell;
+	public double computeTargetWithFee(Window window) {
+		Candle[] candles = getTargetCandles(window);
+		//double sell;
 		// sell = new Sample(ca.flatten(c -> c.getHigh())).max();
 		// sell = new Sample(ca.flatten(c -> c.getHigh())).max();
-
 		for (int i = 0; i < candles.length - 1; i++) {
 			Candle a = candles[i];
 			Candle b = candles[i + 1];
@@ -161,18 +129,19 @@ public class SimpleFeaturizer implements Featurizer {
 			relativeGain *= -1;
 		}*/
 		//double relativeGain = transform(getSellGain(candles, r));
-		double relativeGain = getSellGain(candles, r);
+		double absoluteGain = getSellPrice(window);
+		Relative r = new Relative(getBuyPrice(window));
+		return r.r(absoluteGain) - 0.0015;
 
-		instance.addNumeric(relativeGain);
 	}
 
-	private void computeAmplitude(Candle[] candles, double previousVolume, Instance instance) {
+	/*private void computeAmplitude(Candle[] candles, double previousVolume, Instance instance) {
 		for (Candle c : candles) {
-			
+
 		}
 		instance.addNumeric(getVolumeChange(candles, previousVolume));
 	}
-	
+
 	private void computeRelativeVolumeChange(Candle[] candles, double previousVolume, Instance instance) {
 		instance.addNumeric(getVolumeChange(candles, previousVolume));
 	}
@@ -184,9 +153,9 @@ public class SimpleFeaturizer implements Featurizer {
 		}
 		System.out.println("? " + candles.length + " " + sum + " " + oldVolume);
 		return (sum / candles.length - oldVolume) / oldVolume;
-	}
+	}*/
 
-	/*Doubles limitValue = new Doubles();
+ /*Doubles limitValue = new Doubles();
 	Doubles stopValue = new Doubles();
 	Doubles averageValue = new Doubles();*/
 	private double getMaxPrice(Candle[] candles, Relative r) {
@@ -194,66 +163,63 @@ public class SimpleFeaturizer implements Featurizer {
 		return s.max();
 	}
 
-	private double getMinPrice(Candle[] candles, Relative r) {
-		Sample s = new Sample(candles, c -> c.getClose());
-		return s.min();
-	}
-
-	private double getSellGain(Candle[] candles, Relative r) {
-		// VISUALIZE the good ones!!!! ARIMA?
-		// finer start and end plots
-		// TODO optimizer, see various windows and stops
-
-		//double limit = 0.0015 * 50;
-		// PRINT max vs. gain
-		// TODO make it relative to gain? or last growth?
-		// isolate and optimize this - subset of windows, measure, go through parameters
+	@Override
+	public double getSellPrice(Window window) {
 		double limit = 10;
-		double stop = -0.0015;
+		double stop = -0.015;
 		double movingStop = stop;
-		if (false) { // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+		Candle[] candles = getTargetCandles(window);
+		/*if (true) { // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+			Relative relative = new Relative(getBuyPrice(window));
 			// if profit, start selling proportionally to its size?
 			// dump windows predicted high, set stop and limit randomly for each combination of time/10, profit and prediction percentile
 			for (int i = 0; i < candles.length; i++) {
 				Candle c = candles[i];
-				double gain = r.r(c.getClose());
+				double gain = relative.r(c.getClose());
 				if (gain > limit) {
 					//return limit;
 				}
 				if (gain < movingStop) {
-					return movingStop;
+					return c.getClose();
+					//return movingStop;
 				}
 				if (gain + stop > movingStop) {
 					movingStop = gain + stop;
 				}
 			}
-		}
+		}*/
 		int total = 0;
 		double avg = 0;
+		double max = Double.NEGATIVE_INFINITY;
 		//for (int i = 0; i < candles.length; i++) {
-		for (int i = candles.length * 9 / 10; i < candles.length; i++) {
+		for (int i = candles.length / 2; i < candles.length; i++) {
 			Candle c = candles[i];
-			avg += c.getClose();
+			/*if (c.getHigh() > max) {
+				max = c.getHigh();
+			}*/
+			avg += (c.getClose() + c.getHigh() + c.getLow()) / 3;
 			total++;
 		}
-		//System.out.println("total " + total);
-		//averageValue.add(r.r(avg / total));
-		return r.r(avg / total);
+		//return max;
+
+		return avg / total;
 	}
 
-	private double transform(double v) {
-		if (v >= 0) {
-			return Math.sqrt(v);
-		} else {
-			return -Math.sqrt(-v);
-		}
+	public Candle[] getFeatureCandles(Window window) {
+		Candle[] candles = window.getCandles();
+		Candle[] a = new Candle[pars.getFeatureN()];
+		System.arraycopy(candles, 0, a, 0, pars.getFeatureN());
+
+		return a;
 	}
 
-	public void printStats() {
-		/*	System.out.println("limit: " + new Sample(limitValue).average());
-		System.out.println("stop:  " + new Sample(stopValue).average());
-		System.out.println("avg:   " + new Sample(averageValue).average());*/
+	public Candle[] getTargetCandles(Window window) {
+		Candle[] candles = window.getCandles();
+		Candle[] b = new Candle[pars.getTargetN()];
+		System.arraycopy(candles, pars.getFeatureN(), b, 0, pars.getTargetN());
+		return b;
 	}
+
 }
 
 class Relative {

@@ -9,6 +9,14 @@ public class Format {
 		return String.format("%" + width + "." + digits + "f", d);
 	}
 
+	public static String percentOneDigit(double d) {
+		return String.format("%.1f", d * 100);
+	}
+	
+	public static String oneDigit(double d) {
+		return String.format("%.1f", d);
+	}
+
 	public static String date(long stamp) {
 		Date date = new Date(stamp);
 		SimpleDateFormat df2 = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
@@ -17,7 +25,8 @@ public class Format {
 	}
 
 	public static void main(String[] args) {
-		System.out.println(digits(111.1234, 1, 5));
+		//System.out.println(digits(111.1234, 1, 5));
+		System.out.println(percentOneDigit(1.123235353));
 	}
 
 }

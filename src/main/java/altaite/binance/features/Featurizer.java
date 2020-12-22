@@ -7,5 +7,6 @@ public interface Featurizer {
 
 	public Instance createInstance(Window window);
 
-	public void printStats();
+	public double getSellPrice(Window window);
+
 }

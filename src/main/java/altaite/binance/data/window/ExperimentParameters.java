@@ -2,16 +2,31 @@ package altaite.binance.data.window;
 
 public class ExperimentParameters {
 
-	private int jump = 1;
-	private int featureN = 100;
-	private int targetN = 10;
-	public int trainSamples = 2000;
-	public int testSamples = 30000;
-	private boolean invertCandles = false;
+	private int jump = 1; // TODO 60
+	private int featureN = 200;//getALength() + getBLength() + getCLength() + getDLength();//200;
+	private int targetN = 60;//10;
+	public int trainSamples = 10000;
+	public int testSamples = 10000;
 
 	public void setTargetN(int n) {
 		System.out.println("Setting targetN " + n);
 		this.targetN = n;
+	}
+
+	public int getALength() {
+		return 60 * 5 * 1;
+	}
+
+	public int getBLength() {
+		return 60;
+	}
+
+	public int getCLength() {
+		return 4;
+	}
+
+	public int getDLength() {
+		return targetN;
 	}
 
 	public int getJump() {
@@ -32,6 +47,10 @@ public class ExperimentParameters {
 
 	public double getMonthsBack() {
 		return 500;
+	}
+
+	public double getMediumRangeMonthsBack() {
+		return 1;
 	}
 
 	public String getExperimentDescription() {

@@ -70,4 +70,12 @@ public class ExperimentDirs {
 		return getResultsDir().resolve("results_raw.csv").toFile();
 	}
 
+	private Path getWindowPictures() {
+		return createDirs(home.resolve("pictures"));
+	}
+
+	public File getWindowPicture(int index, double real, double predicted) {
+		return getWindowPictures().resolve(index + "_" + real + "_" + predicted + ".png").toFile();
+	}
+
 }

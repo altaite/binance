@@ -17,22 +17,43 @@ public class Scanners {
 	private Map<SymbolPair, Scanner> scanners = new HashMap<>();
 
 	public Scanners() {
-		pairs.add(new SymbolPair("btc", "usdt"));
+		int i = 0;
+		//for (SymbolPair p : globalDirs.getMostTradedPairs()) {
+		SymbolPair p = new SymbolPair("btc", "usdt");
+		System.out.println("!!! " + p);
+		pairs.add(p);
+		i++;
+		/*if (i > 50000000) {
+			break;
+		}*/
+		//}
+		//pairs.add(new SymbolPair("btc", "usdt"));
 	}
 
 	public void run() {
-		createScanners();
+		initializeScanners();
+		hookScanners();
 	}
 
-	private void createScanners() {
+	private void initializeScanners() {
+		for (SymbolPair pair : pairs) {
+			try {
+				Scanner scanner = new Scanner(globalDirs, pair);
+				scanners.put(pair, scanner);
+			} catch (Exception ex) {
+				ex.printStackTrace();
+			}
+		}
+	}
+
+	private void hookScanners() {
 		// update here to minimize missing candle while saving
 		//storage.save(pair);
 
 		BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance();
 		BinanceApiWebSocketClient client = factory.newWebSocketClient();
 		for (SymbolPair pair : pairs) {
-			Scanner scanner = new Scanner(globalDirs, pair);
-			scanners.put(pair, scanner);
+			Scanner scanner = scanners.get(pair);
 			client.onCandlestickEvent(pair.toString().toLowerCase(),
 				CandlestickInterval.ONE_MINUTE,
 				response -> scanner.process(response));

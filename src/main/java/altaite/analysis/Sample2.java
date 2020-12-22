@@ -63,6 +63,17 @@ public class Sample2 implements Serializable {
 		return s;
 	}
 
+	public Sample2 subsample(int howMany) {
+		Sample2 s = new Sample2();
+		boolean[] sample = Sampling.sample(1, size(), howMany);
+		for (int i = 0; i < size(); i++) {
+			if (sample[i]) {
+				s.add(get(i));
+			}
+		}
+		return s;
+	}
+
 	public Sample2 filter(Function<Pair, Boolean> f) {
 		Sample2 s = new Sample2();
 		for (Pair p : data) {
@@ -145,5 +156,15 @@ public class Sample2 implements Serializable {
 			s.add(x, y);
 		}
 		return s;
+	}
+
+	public Pair getHighestY() {
+		Pair highest = null;
+		for (Pair p : data) {
+			if (highest == null || p.y > highest.y) {
+				highest = p;
+			}
+		}
+		return highest;
 	}
 }

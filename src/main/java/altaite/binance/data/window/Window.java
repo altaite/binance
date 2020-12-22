@@ -2,7 +2,7 @@ package altaite.binance.data.window;
 
 import altaite.binance.data.Candle;
 
-public class Window {
+public class Window implements Comparable<Window> {
 
 	Candle[] candles;
 
@@ -26,5 +26,38 @@ public class Window {
 		for (Candle c : candles) {
 			c.invert();
 		}
+	}
+
+	public int size() {
+		return candles.length;
+	}
+
+	public Candle get(int i) {
+		return candles[i];
+	}
+
+	public double getHigh() {
+		double high = Double.NEGATIVE_INFINITY;
+		for (Candle c : candles) {
+			if (c.getHigh() > high) {
+				high = c.getHigh();
+			}
+		}
+		return high;
+	}
+
+	public double getLow() {
+		double low = Double.POSITIVE_INFINITY;
+		for (Candle c : candles) {
+			if (c.getLow() < low) {
+				low = c.getLow();
+			}
+		}
+		return low;
+	}
+
+	@Override
+	public int compareTo(Window other) {
+		return Long.compare(this.getStart(), other.getStart());
 	}
 }

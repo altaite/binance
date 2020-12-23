@@ -2,9 +2,9 @@ package altaite.binance.data.window;
 
 public class ExperimentParameters {
 
-	private int jump = 1; // TODO 60
 	private int featureN = 200;//getALength() + getBLength() + getCLength() + getDLength();//200;
 	private int targetN = 60;//10;
+	private int jump = featureN + targetN; // TODO 60
 	public int trainSamples = 10000;
 	public int testSamples = 10000;
 

@@ -2,7 +2,7 @@ package altaite.binance.features;
 
 import altaite.binance.data.Candle;
 import altaite.binance.data.window.Window;
-import altaite.learn.Instance;
+import altaite.learn.MyInstance;
 import altaite.analysis.Sample;
 import altaite.binance.data.window.ExperimentParameters;
 import org.jtransforms.fft.DoubleFFT_1D;
@@ -16,9 +16,9 @@ public class SimpleFeaturizer implements Featurizer {
 	}
 
 	@Override
-	public Instance createInstance(Window window) {
+	public MyInstance createInstance(Window window) {
 		boolean windowWithTarget = window.size() > pars.getFeatureN();
-		Instance instance = new Instance(windowWithTarget);
+		MyInstance instance = new MyInstance(windowWithTarget);
 		setFeatures(window, instance);
 		if (windowWithTarget) {
 			setTarget(window, instance);
@@ -26,7 +26,7 @@ public class SimpleFeaturizer implements Featurizer {
 		return instance;
 	}
 
-	private void setFeatures(Window window, Instance instance) {
+	private void setFeatures(Window window, MyInstance instance) {
 		// derive distribution chars from single candle
 		// then i can have same for multiple candles, just better?
 		// do some statistics on multiple candles?
@@ -83,7 +83,7 @@ public class SimpleFeaturizer implements Featurizer {
 		return a[a.length - 1].getClose();
 	}
 
-	private void addFourier(double[] inOut, Instance instance) {
+	private void addFourier(double[] inOut, MyInstance instance) {
 		DoubleFFT_1D fft = new DoubleFFT_1D(inOut.length);
 		fft.realForward(inOut);
 		for (int i = 0; i < inOut.length; i++) {
@@ -101,7 +101,7 @@ public class SimpleFeaturizer implements Featurizer {
 		return b;
 	}
 	 */
-	private void setTarget(Window window, Instance instance) {
+	private void setTarget(Window window, MyInstance instance) {
 		double relativeGain = computeTargetWithFee(window);
 		instance.addNumeric(relativeGain);
 	}

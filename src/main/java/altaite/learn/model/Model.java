@@ -1,10 +1,10 @@
 package altaite.learn.model;
 
-import altaite.learn.Instance;
+import altaite.learn.MyInstance;
 
 public interface Model {
 
-	public double predict(Instance instance);
+	public double predict(MyInstance instance);
 
 	public void deserialize();
 }

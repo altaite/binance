@@ -110,4 +110,16 @@ public class GlobalDirs {
 		return p.toFile();
 	}
 
+	public Path getModelFull() {
+		Path p = home.resolve("model_rf_full_data");
+		createDirs(p);
+		return p;
+	}
+
+	public Path
+		getDataFull() {
+		Path p = home.resolve("data_full.arff");
+		return p;
+	}
+
 }

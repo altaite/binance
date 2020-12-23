@@ -1,6 +1,6 @@
 package altaite.binance.trader;
 
-import altaite.learn.Instance;
+import altaite.learn.MyInstance;
 import altaite.learn.model.Model;
 
 public class Trader {
@@ -28,7 +28,7 @@ public class Trader {
 	}
 
 	
-	public double trade(Instance instance) {
+	public double trade(MyInstance instance) {
 		model.predict(instance);
 		return 0;
 	}

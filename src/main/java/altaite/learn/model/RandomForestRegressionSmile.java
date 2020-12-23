@@ -2,7 +2,7 @@ package altaite.learn.model;
 
 import altaite.analysis.Pair;
 import altaite.analysis.Sample2;
-import altaite.learn.Instance;
+import altaite.learn.MyInstance;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -88,7 +88,7 @@ public class RandomForestRegressionSmile implements Model {
 	}
 
 	@Override
-	public double predict(Instance instance) {
+	public double predict(MyInstance instance) {
 		double[] row = instance.getIndependent();
 		/*DataType t = DataType.of(Double.class);
 		StructField[] fields = new StructField[row.length];

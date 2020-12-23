@@ -1,6 +1,6 @@
 package altaite.learn.model;
 
-import altaite.learn.Instance;
+import altaite.learn.MyInstance;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -112,7 +112,7 @@ public class RandomForestClassifierSmile implements Model {
 	boolean bound = false;
 
 	@Override
-	public double predict(Instance instance) {
+	public double predict(MyInstance instance) {
 		if (!bound) {
 			Path home = Paths.get("d:/t/data/binance/");
 			Path train = home.resolve("high_train.arff");
@@ -129,7 +129,9 @@ public class RandomForestClassifierSmile implements Model {
 		}
 		StructType schema = new StructType(fields);
 		Tuple tuple = Tuple.of(row, schema);
-		return model.predict(tuple);
+		double[] p = new double[2];
+		model.predict(tuple, p);
+		return p[1];
 	}
 
 	public static void main(String[] args) {

@@ -10,12 +10,13 @@ import altaite.binance.data.window.ExperimentParameters;
 import altaite.binance.features.HighFeaturizer;
 import altaite.binance.global.io.GlobalDirs;
 import altaite.learn.Dataset;
-import altaite.learn.Instance;
+import altaite.learn.MyInstance;
+import altaite.learn.model.RandomForestClassifierSmile;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class Backtest {
 
@@ -24,16 +25,92 @@ public class Backtest {
 	private HighFeaturizer featurizer = new HighFeaturizer(pars);
 	private boolean update = true;
 	private int readMax = Integer.MAX_VALUE;
-	private Map<String, Long> numbers = new HashMap<>();
 	private CandleStorage storage = new CandleStorage(globalDirs.getCandleStorage());
 
 	private void evaluate() {
 		List<SymbolPair> pairs = globalDirs.getMostTradedPairs();
+		Windows all = new Windows();
+
+		//for (int i = 10; i < 11; i++) {
+		int done = 0;
+		for (int pi = 0; pi < 10/*pairs.size()*/; pi++) {
+			/*if (done > 20) {
+				break;
+			}*/
+			SymbolPair pair = pairs.get(pi);
+
+			// TODO full set and btc uncorelated manually in file
+			// TODO real life test same as before, possibly breakdown by market
+			/*if (!pair.toString().contains("BTC")
+				|| pair.toString().contains("USDC")
+				|| pair.toString().contains("BUSD")) {
+				System.out.println("SKIPPING PAIR " + pair);
+				continue;
+			}*/
+			System.out.println("PAIR " + pair);
+			Candles candles;
+			if (update) {
+				candles = storage.update(pair, pars.getMonthsBack());
+				storage.save(pair);
+			} else {
+				candles = storage.get(pair, readMax);
+			}
+			WindowsFactory wf = new WindowsFactory(candles, pars);
+			Windows windows = wf.createWindows();
+			all.add(windows);
+		}
+		all.sort();
+		long time = all.getMedianTime();
+
+		createDataset(all, globalDirs.getDataFull());
+
+		Windows[] folds = all.split(time);
+
+		createDataset(folds[0], Paths.get("d:/t/data/binance/high_train_real_2.arff"));
+		createDataset(folds[1], Paths.get("d:/t/data/binance/high_test_real_2.arff"));
+
+		evaluateClasses(folds[0]);
+		evaluateClasses(folds[1]);
+
+		Path modelPath = Paths.get("d:/t/data/binance/model_real_2");
+		try {
+			Files.createDirectories(modelPath);
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
+		}
+
+		RandomForestClassifierSmile model = new RandomForestClassifierSmile(
+			Paths.get("d:/t/data/binance/high_train_real_2.arff"),
+			modelPath);
+		for (Window w : folds[1]) {
+			MyInstance instance = featurizer.createInstance(w);
+			double d = model.predict(instance);
+			System.out.println("   " + d);
+		}
+
+		RandomForestClassifierSmile fullModel = new RandomForestClassifierSmile(globalDirs.getDataFull(),
+			globalDirs.getModelFull());
+
+	}
+
+	private void evaluateClasses(Windows windows) {
+		int one = 0;
+		int two = 0;
+		for (Window w : windows.getWindows()) {
+			if (featurizer.isHighRise(w)) {
+				one++;
+			} else {
+				two++;
+			}
+		}
+		System.out.println("one " + one + " two " + two);
+	}
+
+	private void evaluateBalancing() {
+		List<SymbolPair> pairs = globalDirs.getMostTradedPairs();
 		Windows allPositive = new Windows();
 		Windows allNegative = new Windows();
 
-		// TRY FIRST real life data, simple, telling, just limit 1000 per pair
-		// probablky will not work with RF, but maybe bayes, or cost matrix
 		//for (int i = 10; i < 11; i++) {
 		int done = 0;
 		for (int pi = 0; pi < 1/*pairs.size()*/; pi++) {
@@ -83,7 +160,7 @@ public class Backtest {
 
 			System.out.println("POSITIVE " + positive.size());
 			System.out.println("NEGATIVE " + negative.size());
-			int sampleSize = Math.min(positive.size(), 10000); 
+			int sampleSize = Math.min(positive.size(), 10000);
 
 			Windows ns = negative.sample(sampleSize);
 			Windows ps = positive.sample(sampleSize);
@@ -146,7 +223,7 @@ public class Backtest {
 		int n = 0;
 		for (int i = 0; i < windows.size(); i++) {
 			Window w = windows.get(i);
-			Instance instance = featurizer.createInstance(w);
+			MyInstance instance = featurizer.createInstance(w);
 			dataset.add(instance);
 			n = instance.size();
 		}

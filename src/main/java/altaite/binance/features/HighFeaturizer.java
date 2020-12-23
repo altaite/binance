@@ -1,8 +1,9 @@
 package altaite.binance.features;
 
+import altaite.analysis.Sample;
 import altaite.binance.data.Candle;
 import altaite.binance.data.window.Window;
-import altaite.learn.Instance;
+import altaite.learn.MyInstance;
 import altaite.binance.data.window.ExperimentParameters;
 import org.jtransforms.fft.DoubleFFT_1D;
 
@@ -14,9 +15,9 @@ public class HighFeaturizer {
 		this.pars = pars;
 	}
 
-	public Instance createInstance(Window window) {
+	public MyInstance createInstance(Window window) {
 		boolean windowWithTarget = window.size() > pars.getFeatureN();
-		Instance instance = new Instance(windowWithTarget);
+		MyInstance instance = new MyInstance(windowWithTarget);
 		setFeatures(window, instance);
 		if (windowWithTarget) {
 			setTarget(window, instance);
@@ -24,16 +25,22 @@ public class HighFeaturizer {
 		return instance;
 	}
 
-	private void setFeatures(Window window, Instance instance) {
+	private void setFeatures(Window window, MyInstance instance) {
 		// derive distribution chars from single candle
 		// then i can have same for multiple candles, just better?
 		// do some statistics on multiple candles?
 
 		Candle[] candles = getFeatureCandles(window);
+		Candle[] a = getFirst(candles, candles.length / 2);
+		Candle[] b = getLast(candles, candles.length - candles.length / 2);
+
 		double buyPrice = getBuyPrice(window);
 		Relative r = new Relative(buyPrice);
+
+		double volumeBase = new Sample(b, c -> c.getVolume()).average();
+
 		int k = 0;
-		for (Candle c : candles) {
+		for (Candle c : b) {
 			if (k < candles.length / 2) {
 				//continue;
 			}
@@ -48,7 +55,7 @@ public class HighFeaturizer {
 			// need those relative:
 
 			//instance.addNumeric(c.getNumberOfTrades());
-			instance.addNumeric(c.getVolume());
+			instance.addNumeric(c.getVolume() / volumeBase);
 			//instance.addNumeric(c.getQuoteAssetVolume());
 			//instance.addNumeric(c.getTakerBuyBaseAssetVolume());
 		}
@@ -77,7 +84,23 @@ public class HighFeaturizer {
 		addFourier(close, instance);*/
 	}
 
-	private void addMovingAverage(Candle[] candles, int n, Instance instance) {
+	private Candle[] getFirst(Candle[] a, int n) {
+		Candle[] b = new Candle[n];
+		for (int i = 0; i < b.length; i++) {
+			b[i] = a[i];
+		}
+		return b;
+	}
+
+	private Candle[] getLast(Candle[] a, int n) {
+		Candle[] b = new Candle[n];
+		for (int i = 0; i < b.length; i++) {
+			b[i] = a[a.length - n + i];
+		}
+		return b;
+	}
+
+	private void addMovingAverage(Candle[] candles, int n, MyInstance instance) {
 		Double last = null;
 		for (int i = 0; i < candles.length - n; i++) {
 			double sum = 0;
@@ -100,7 +123,7 @@ public class HighFeaturizer {
 		return a[a.length - 1].getClose();
 	}
 
-	private void addFourier(double[] inOut, Instance instance) {
+	private void addFourier(double[] inOut, MyInstance instance) {
 		DoubleFFT_1D fft = new DoubleFFT_1D(inOut.length);
 		fft.realForward(inOut);
 		for (int i = 0; i < inOut.length; i++) {
@@ -108,7 +131,7 @@ public class HighFeaturizer {
 		}
 	}
 
-	private void setTarget(Window window, Instance instance) {
+	private void setTarget(Window window, MyInstance instance) {
 		instance.addNominal(isHighRise(window) ? 1 : 0);
 	}
 
@@ -135,7 +158,7 @@ public class HighFeaturizer {
 				min = relative;
 			}
 		}
-		double high = 10 * (2 * 0.0015);
+		double high = 5 * (2 * 0.00075);
 		boolean isHigh = max > high;
 		boolean isLow = min < -max / 2;
 		return isHigh & !isLow;

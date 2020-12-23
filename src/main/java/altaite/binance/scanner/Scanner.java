@@ -9,7 +9,7 @@ import altaite.binance.data.window.Window;
 import altaite.binance.features.HighFeaturizer;
 import altaite.binance.global.io.ExperimentDirs;
 import altaite.binance.global.io.GlobalDirs;
-import altaite.learn.Instance;
+import altaite.learn.MyInstance;
 import altaite.learn.model.Model;
 import altaite.learn.model.RandomForestClassifierSmile;
 import com.binance.api.client.domain.event.CandlestickEvent;
@@ -33,7 +33,7 @@ public class Scanner {
 		this.pair = pair;
 		this.dirs = new ExperimentDirs(globalDirs, pair, pars.getExperimentDescription());
 		//this.model = new RandomForestRegressionSmile(this.dirs.getModel());
-		Path modelPath = Paths.get("d:/t/data/binance/").resolve("model_rf");
+		Path modelPath = globalDirs.getModelFull();
 		this.model = new RandomForestClassifierSmile(modelPath);
 		this.featurizer = new HighFeaturizer(pars);
 		this.interpreter = new PredictionInterpreter(dirs.getResultsRawCsv());
@@ -60,7 +60,7 @@ public class Scanner {
 		Candle[] a = chart.getEnd(pars.getFeatureN());
 		check(a);
 		Window w = new Window(a);
-		Instance instance = featurizer.createInstance(w);
+		MyInstance instance = featurizer.createInstance(w);
 		double prediction = model.predict(instance);
 		System.out.println(prediction + " " + interpreter.percentilePredicted(prediction));
 	}

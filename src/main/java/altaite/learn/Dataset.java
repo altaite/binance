@@ -12,11 +12,11 @@ import java.util.TreeSet;
 
 public class Dataset {
 
-	private List<Instance> instances = new ArrayList<>();
+	private List<MyInstance> instances = new ArrayList<>();
 
 	private final String nl = "\n";
 
-	public void add(Instance instance) {
+	public void add(MyInstance instance) {
 		if (!instances.isEmpty()) {
 			if (!instances.get(instances.size() - 1).isCompatible(instance)) {
 				throw new RuntimeException("Instances not compatible: " + instances.size());
@@ -67,7 +67,7 @@ public class Dataset {
 
 	private void writeData(List<Set<Integer>> types, BufferedWriter bw) throws IOException {
 		for (int x = 0; x < instances.size(); x++) {
-			Instance instance = instances.get(x);
+			MyInstance instance = instances.get(x);
 			for (int y = 0; y < instance.size(); y++) {
 				if (y != 0) {
 					bw.write(",");
@@ -85,7 +85,7 @@ public class Dataset {
 
 	private List<Set<Integer>> getTypes() {
 		List<Set<Integer>> types = new ArrayList<>();
-		Instance first = instances.get(0);
+		MyInstance first = instances.get(0);
 		for (int i = 0; i < first.size(); i++) {
 			types.add(null);
 		}
@@ -95,7 +95,7 @@ public class Dataset {
 			}
 		}
 		for (int x = 0; x < instances.size(); x++) {
-			Instance instance = instances.get(x);
+			MyInstance instance = instances.get(x);
 			for (int y = 0; y < instance.size(); y++) {
 				if (!instance.isNominal(y)) {
 					continue;

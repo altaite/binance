@@ -17,7 +17,7 @@ import altaite.binance.global.io.GlobalDirs;
 import altaite.binance.trader.Trader;
 import altaite.format.Format;
 import altaite.learn.Dataset;
-import altaite.learn.Instance;
+import altaite.learn.MyInstance;
 import altaite.learn.model.Model;
 import altaite.learn.model.RandomForestRegressionSmile;
 import com.binance.api.client.domain.event.AllMarketTickersEvent;
@@ -101,7 +101,7 @@ public class BacktestSingleMarkets {
 		int index = 0;
 		for (Window w : windows) {
 			index++;
-			Instance instance = featurizer.createInstance(w);
+			MyInstance instance = featurizer.createInstance(w);
 			double real = instance.getTarget();
 			double predicted = model.predict(instance);
 
@@ -124,7 +124,7 @@ public class BacktestSingleMarkets {
 		// implement isolated, properly
 		for (Window w : windows) {
 			index++;
-			Instance instance = featurizer.createInstance(w);
+			MyInstance instance = featurizer.createInstance(w);
 			double real = instance.getTarget();
 			double predicted = model.predict(instance);
 
@@ -141,7 +141,7 @@ public class BacktestSingleMarkets {
 		System.out.println("Evaluating windows: " + windows.size());
 		Sample2 s = new Sample2();
 		for (Window w : windows) {
-			Instance i = featurizer.createInstance(w);
+			MyInstance i = featurizer.createInstance(w);
 			double real = i.getTarget();
 			double predicted = model.predict(i);
 			s.add(real, predicted);
@@ -162,7 +162,7 @@ public class BacktestSingleMarkets {
 		int n = 0;
 		for (int i = 0; i < windows.size(); i++) {
 			Window w = windows.get(i);
-			Instance instance = featurizer.createInstance(w);
+			MyInstance instance = featurizer.createInstance(w);
 			dataset.add(instance);
 			n = instance.size();
 		}

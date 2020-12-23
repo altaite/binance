@@ -102,7 +102,7 @@ public class Candles {
 
 	private void saveAll() {
 		int total = 0;
-		try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file, true))) {
+		try (DataOutputStream dos = new DataOutputStream(new FileOutputStream(file))) {
 			for (Candle c : map.values()) {
 				c.write(dos);
 				total++;

@@ -4,13 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class Instance {
+public class MyInstance {
 
 	private List<Double> list = new ArrayList<>();
 	private List<Boolean> isNominal = new ArrayList<>();
 	private boolean hasTarget;
 
-	public Instance(boolean hasTarget) {
+	public MyInstance(boolean hasTarget) {
 		this.hasTarget = hasTarget;
 	}
 
@@ -24,7 +24,7 @@ public class Instance {
 		isNominal.add(false);
 	}
 
-	public boolean isCompatible(Instance other) {
+	public boolean isCompatible(MyInstance other) {
 		if (list.size() != other.list.size() || isNominal.size() != other.isNominal.size()) {
 			return false;
 		}

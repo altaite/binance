@@ -8,15 +8,22 @@ import altaite.binance.data.WindowsFactory;
 import altaite.binance.data.window.Window;
 import altaite.binance.data.window.ExperimentParameters;
 import altaite.binance.features.HighFeaturizer;
+import altaite.binance.global.io.ExperimentDirs;
 import altaite.binance.global.io.GlobalDirs;
+import altaite.format.Format;
 import altaite.learn.Dataset;
 import altaite.learn.MyInstance;
 import altaite.learn.model.RandomForestClassifierSmile;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import static smile.data.formula.Terms.all;
 
 public class Backtest {
 
@@ -28,6 +35,77 @@ public class Backtest {
 	private CandleStorage storage = new CandleStorage(globalDirs.getCandleStorage());
 
 	private void evaluate() {
+		List<SymbolPair> pairs = globalDirs.getMostTradedPairs();
+
+		Date[] dates = {Format.parseDate("2019-05-01"), Format.parseDate("2020-09-01")};
+		Folds folds = new Folds(dates);
+
+		for (int pi = 0; pi < 10/*pairs.size()*/; pi++) {
+			SymbolPair pair = pairs.get(pi);
+			System.out.println("PAIR " + pair);
+			Candles candles;
+			if (update) {
+				candles = storage.update(pair, pars.getMonthsBack());
+				storage.save(pair);
+			} else {
+				candles = storage.get(pair, readMax);
+			}
+			WindowsFactory wf = new WindowsFactory(candles, pars);
+			Windows w = wf.createWindows();
+			folds.add(pair, w);
+		}
+
+		for (int targetFold = 1; targetFold < folds.getNumberOfFolds(); targetFold++) {
+			Windows train = folds.getFold(0, targetFold - 1);
+			ExperimentDirs ed = new ExperimentDirs(globalDirs, "_target_fold_" + targetFold);
+			Windows test = folds.getFold(targetFold);
+			evaluateFold(ed, test);
+			//for (SymbolPair pair : pairs) {
+			//}
+		}
+	}
+
+	private void evaluateFold(ExperimentDirs ed, Windows testWindows) {
+		
+		RandomForestClassifierSmile model = new RandomForestClassifierSmile(ed.getTrain(), ed.getModel());
+		List<Classification> classifications = new ArrayList<>();
+		for (Window w : testWindows) {
+			MyInstance instance = featurizer.createInstance(w);
+			double p = model.predict(instance);
+			double[] realLowHigh = new double[2];
+			boolean isHigh = featurizer.isHighRise(w, realLowHigh);
+			Classification c = new Classification(p, isHigh, realLowHigh[0], realLowHigh[1]);
+			classifications.add(c);
+		}
+		try (BufferedWriter bw = new BufferedWriter(new FileWriter(ed.getClassifications()))) {
+			for (Classification c : classifications) {
+				bw.write(c.probability + "," + (c.isHigh ? "1" : "0") + "," + c.low + "," + c.high);
+			}
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
+		}
+		try (BufferedWriter bw = new BufferedWriter(new FileWriter(ed.getThresholds()))) {
+			bw.write("threshold,tp,total,highAmongPredicted\n");
+			for (double threshold = 0; threshold <= 1; threshold += 0.01) {
+				int tp = 0;
+				int total = 0;
+				for (Classification c : classifications) {
+					if (c.probability >= threshold) {
+						total++;
+						if (c.isHigh) {
+							tp++;
+						}
+					}
+				}
+				double highAmongPredicted = ((double) tp) / total;
+				System.out.println(threshold + "," + tp + "," + total + "," + highAmongPredicted + "\n");
+			}
+		} catch (IOException ex) {
+			throw new RuntimeException(ex);
+		}
+	}
+
+	private void evaluateSingleSplit() {
 		List<SymbolPair> pairs = globalDirs.getMostTradedPairs();
 		Windows all = new Windows();
 

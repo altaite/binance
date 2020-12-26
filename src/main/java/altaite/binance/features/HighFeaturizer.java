@@ -136,6 +136,10 @@ public class HighFeaturizer {
 	}
 
 	public boolean isHighRise(Window window) {
+		return isHighRise(window, null);
+	}
+
+	public boolean isHighRise(Window window, double[] lowHi) {
 		Candle[] candles = getTargetCandles(window);
 
 		for (int i = 0; i < candles.length - 1; i++) {
@@ -158,9 +162,15 @@ public class HighFeaturizer {
 				min = relative;
 			}
 		}
+
 		double high = 5 * (2 * 0.00075);
 		boolean isHigh = max > high;
 		boolean isLow = min < -max / 2;
+		if (lowHi != null) {
+			lowHi = new double[2];
+			lowHi[0] = min;
+			lowHi[1] = max;
+		}
 		return isHigh & !isLow;
 	}
 

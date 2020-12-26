@@ -14,6 +14,10 @@ public class ExperimentDirs {
 		this.home = globalDirs.getExperiment(pair, description);
 	}
 
+	public ExperimentDirs(GlobalDirs globalDirs, String description) {
+		this.home = globalDirs.getExperiment(description);
+	}
+
 	public ExperimentDirs(Path homePath) {
 		this.home = homePath;
 		createDirs(this.home);
@@ -60,14 +64,22 @@ public class ExperimentDirs {
 		return getRandomForest();
 	}
 
-	public Path getResultsDir() {
+	private Path getResults() {
 		Path p = home.resolve("results");
 		createDirs(p);
 		return p;
 	}
 
+	public File getClassifications() {
+		return getResults().resolve("classifications.csv").toFile();
+	}
+
+	public File getThresholds() {
+		return getResults().resolve("thresholds.csv").toFile();
+	}
+
 	public File getResultsRawCsv() {
-		return getResultsDir().resolve("results_raw.csv").toFile();
+		return getResults().resolve("results_raw.csv").toFile();
 	}
 
 	private Path getWindowPictures() {

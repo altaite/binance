@@ -49,6 +49,12 @@ public class GlobalDirs {
 		return p;
 	}
 
+	public Path getExperiment(String description) {
+		Path p = getExperiments().resolve(description);
+		createDirs(p);
+		return p;
+	}
+
 	public File getHeatMapColors() {
 		return home.resolve("colors.png").toFile();
 	}

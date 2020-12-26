@@ -1,5 +1,6 @@
 package altaite.format;
 
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -12,7 +13,7 @@ public class Format {
 	public static String percentOneDigit(double d) {
 		return String.format("%.1f", d * 100);
 	}
-	
+
 	public static String oneDigit(double d) {
 		return String.format("%.1f", d);
 	}
@@ -22,6 +23,14 @@ public class Format {
 		SimpleDateFormat df2 = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
 		String dateText = df2.format(date);
 		return dateText;
+	}
+
+	public static Date parseDate(String date) {
+		try {
+			return new SimpleDateFormat("yyyy-MM-dd").parse(date);
+		} catch (ParseException e) {
+			return null;
+		}
 	}
 
 	public static void main(String[] args) {

@@ -87,6 +87,30 @@ public class Windows implements Iterable<Window> {
 		return ws;
 	}
 
+	public Windows[] split(long[] times) {
+		Windows[] split = new Windows[times.length + 1];
+		for (int i = 0; i < split.length; i++) {
+			split[i] = new Windows();
+		}
+		for (Window w : windows) {
+			for (int i = 0; i <= times.length; i++) {
+				long t1 = Long.MIN_VALUE;
+				long t2 = Long.MAX_VALUE;
+				if (i != 0) {
+					t1 = times[i - 1];
+				}
+				if (i != times.length) {
+					t2 = times[i];
+				}
+				if (t1 < w.getStart() && w.getEnd() < t2) {
+					split[i].add(w);
+					break;
+				}
+			}
+		}
+		return split;
+	}
+
 	public Windows[] splitByPercent(double percent) {
 		boolean overlap = false;
 		int a = 0;
